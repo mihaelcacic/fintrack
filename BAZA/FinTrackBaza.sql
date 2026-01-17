@@ -2,8 +2,7 @@ CREATE TABLE users (
                        id INT GENERATED ALWAYS AS IDENTITY,
                        email VARCHAR(255) UNIQUE NOT NULL,
                        password_hash TEXT NOT NULL,
-                       first_name VARCHAR(100),
-                       last_name VARCHAR(100),
+                       username VARCHAR(100),
                        created_at TIMESTAMP DEFAULT NOW()
 );
 
