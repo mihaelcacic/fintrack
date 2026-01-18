@@ -1,16 +1,41 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useMemo, useState, useEffect } from "react";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchUser = async () => {
+            try {
+                const res = await fetch("/api/auth/me", {
+                    method: "GET",
+                    credentials: "include"
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    setUser(data);
+                } else {
+                    setUser(null);
+                }
+            } catch {
+                setUser(null);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        void fetchUser();
+    }, []);
 
     const register = async (name, email, password) => {
         const res = await fetch("/api/auth/register", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ username: name, email, password }),
-            credentials: "include" // šalje cookie
+            credentials: "include"
         });
 
         if (!res.ok) {
@@ -50,11 +75,15 @@ export function AuthProvider({ children }) {
     };
 
     const value = useMemo(
-        () => ({ user, isAuthenticated: !!user, register, login, logout }),
-        [user]
+        () => ({ user, isAuthenticated: !!user, loading, register, login, logout }),
+        [user, loading]
     );
 
-    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+    return (
+        <AuthContext.Provider value={value}>
+            {children}
+        </AuthContext.Provider>
+    );
 }
 
 export function useAuth() {

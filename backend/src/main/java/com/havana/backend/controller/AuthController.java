@@ -15,6 +15,14 @@ public class AuthController {
 
     private final UserService userService;
 
+    @GetMapping("/me")
+    public ResponseEntity<?> me(HttpSession session) {
+        Object userId = session.getAttribute("user");
+        if (userId == null) return ResponseEntity.status(401).build();
+        User user = userService.findById((Integer) userId);
+        return ResponseEntity.ok(user);
+    }
+
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest request, HttpSession session) {
         User user = userService.register(request.username(), request.email(), request.password());
