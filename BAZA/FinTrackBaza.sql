@@ -1,5 +1,5 @@
 CREATE TABLE users (
-                       id INT GENERATED ALWAYS AS IDENTITY,
+                       id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
                        email VARCHAR(255) UNIQUE NOT NULL,
                        password_hash TEXT NOT NULL,
                        username VARCHAR(100),
@@ -7,16 +7,16 @@ CREATE TABLE users (
 );
 
 CREATE TABLE categories (
-                            id INT GENERATED ALWAYS AS IDENTITY,
-                            user_id INT REFERENCES users(id) ON DELETE CASCADE,
+                            id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                            user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                             name VARCHAR(100) NOT NULL,
                             type VARCHAR(10) NOT NULL CHECK (type IN ('INCOME', 'EXPENSE')),
                             UNIQUE (user_id, name)
 );
 
 CREATE TABLE transactions (
-                              id INT GENERATED ALWAYS AS IDENTITY,
-                              user_id INT REFERENCES users(id) ON DELETE CASCADE,
+                              id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                              user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                               category_id INT REFERENCES categories(id),
                               amount NUMERIC(12,2) NOT NULL CHECK (amount > 0),
                               transaction_date DATE NOT NULL,
@@ -25,8 +25,8 @@ CREATE TABLE transactions (
 );
 
 CREATE TABLE saving_goals (
-                              id INT GENERATED ALWAYS AS IDENTITY,
-                              user_id INT REFERENCES users(id) ON DELETE CASCADE,
+                              id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                              user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                               name VARCHAR(100) NOT NULL,
                               target_amount NUMERIC(12,2) NOT NULL CHECK (target_amount > 0),
                               current_amount NUMERIC(12,2) DEFAULT 0 CHECK (current_amount >= 0),
@@ -39,4 +39,3 @@ CREATE INDEX idx_transactions_user_date
 
 CREATE INDEX idx_transactions_category
     ON transactions(category_id);
-
