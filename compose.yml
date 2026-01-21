@@ -1,0 +1,48 @@
+services:
+  frontend:
+    environment:
+      - DOCKER_ENV=${DOCKER_ENV}
+      - HOST_FRONTEND=${HOST_FRONTEND}
+      - PORT_FRONTEND=${PORT_FRONTEND}
+      - HOST_BACKEND=${HOST_BACKEND}
+      - PORT_BACKEND=${PORT_BACKEND}
+      - BACKEND_URL=${BACKEND_URL}
+    build:
+      context: ./frontend
+      dockerfile: frontend.dockerfile
+      args:
+        - PORT=${PORT_FRONTEND}
+    image: frontend-service:latest
+    ports:
+      - "${PORT_NGINX_FRONTEND}:${PORT_NGINX_FRONTEND}"
+    restart: unless-stopped
+    networks:
+      - appnet
+
+  backend:
+    environment:
+      - DOCKER_ENV=true
+      - SERVER_ADDRESS=${HOST_BACKEND}
+      - SERVER_PORT=${PORT_BACKEND}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - SPRING_APPLICATION_NAME=${SPRING_APPLICATION_NAME}
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+      - SPRING_JPA_SHOW_SQL=true
+    build:
+      context: ./backend
+      dockerfile: backend.dockerfile
+      target: backend-service
+      args:
+        - PORT=${PORT_BACKEND}
+    image: backend-service:latest
+    ports:
+      - "${PORT_BACKEND}:${PORT_BACKEND}"
+    restart: unless-stopped
+    networks:
+      - appnet
+
+networks:
+  appnet:
+    driver: bridge

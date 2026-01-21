@@ -1,85 +1,93 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { readJSON, writeJSON } from "../data/storage";
+import { createContext, useContext, useMemo, useState, useEffect } from "react";
 
 const AuthContext = createContext(null);
 
-const USERS_KEY = "users";
-const AUTH_KEY = "auth_user";
-
-// seed admin user (frontend-only demo)
-function ensureSeedUsers() {
-  const users = readJSON(USERS_KEY, []);
-  if (users.length === 0) {
-    const admin = {
-      id: crypto.randomUUID(),
-      name: "Admin",
-      email: "admin@fintrack.hr",
-      password: "admin123",
-      role: "admin",
-    };
-    writeJSON(USERS_KEY, [admin]);
-    return [admin];
-  }
-  return users;
-}
-
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => readJSON(AUTH_KEY, null));
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    ensureSeedUsers();
-  }, []);
+    useEffect(() => {
+        const fetchUser = async () => {
+            try {
+                const res = await fetch("/api/auth/me", {
+                    method: "GET",
+                    credentials: "include"
+                });
 
-  const register = (name, email, password) => {
-    const users = readJSON(USERS_KEY, []);
-    const exists = users.some((u) => u.email.toLowerCase() === email.toLowerCase());
-    if (exists) throw new Error("Email is already registered.");
+                if (res.ok) {
+                    const data = await res.json();
+                    setUser(data);
+                } else {
+                    setUser(null);
+                }
+            } catch {
+                setUser(null);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-    const newUser = {
-      id: crypto.randomUUID(),
-      name,
-      email,
-      password,
-      role: "user",
+        void fetchUser();
+    }, []);
+
+    const register = async (name, email, password) => {
+        const res = await fetch("/api/auth/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: name, email, password }),
+            credentials: "include"
+        });
+
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.message || "Registration failed.");
+        }
+
+        const userData = await res.json();
+        setUser(userData);
+        return userData;
     };
 
-    const updated = [...users, newUser];
-    writeJSON(USERS_KEY, updated);
+    const login = async (email, password) => {
+        const res = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
+            credentials: "include"
+        });
 
-    // auto-login after register
-    writeJSON(AUTH_KEY, newUser);
-    setUser(newUser);
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.message || "Login failed.");
+        }
 
-    return newUser;
-  };
+        const userData = await res.json();
+        setUser(userData);
+        return userData;
+    };
 
-  const login = (email, password) => {
-    const users = readJSON(USERS_KEY, []);
-    const found = users.find(
-      (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
+    const logout = async () => {
+        await fetch("/api/auth/logout", {
+            method: "POST",
+            credentials: "include",
+        });
+        setUser(null);
+    };
+
+    const value = useMemo(
+        () => ({ user, isAuthenticated: !!user, loading, register, login, logout }),
+        [user, loading]
     );
-    if (!found) throw new Error("Invalid email or password.");
 
-    writeJSON(AUTH_KEY, found);
-    setUser(found);
-    return found;
-  };
-
-  const logout = () => {
-    localStorage.removeItem(AUTH_KEY);
-    setUser(null);
-  };
-
-  const value = useMemo(
-    () => ({ user, isAuthenticated: !!user, register, login, logout }),
-    [user]
-  );
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+    return (
+        <AuthContext.Provider value={value}>
+            {children}
+        </AuthContext.Provider>
+    );
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
-  return ctx;
+    const ctx = useContext(AuthContext);
+    if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
+    return ctx;
 }
