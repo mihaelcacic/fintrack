@@ -1,10 +1,22 @@
 package com.havana.backend.service;
 
+import com.havana.backend.data.TransactionFilterRequest;
 import com.havana.backend.model.Transaction;
 import com.havana.backend.model.User;
 import com.havana.backend.repository.TransactionRepository;
 import com.havana.backend.repository.SavingGoalRepository;
+import com.havana.backend.repository.UserRepository;
+import com.havana.backend.specification.TransactionSpecification;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -18,6 +30,8 @@ public class TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final SavingGoalRepository savingGoalRepository;
+    private final UserRepository userRepository;
+    private final HttpSession session;
 
     public List<Map<String, Object>> getSpendingByCategory(User user) {
         List<Transaction> transactions = transactionRepository.findByUser(user);
@@ -58,6 +72,97 @@ public class TransactionService {
         result.put("remaining", weeklyGoal.subtract(weeklySpent));
         result.put("percentage", weeklySpent.doubleValue() / weeklyGoal.doubleValue() * 100);
         return result;
+    }
+
+    public Page<Transaction> getTransactionsForCurrentUser(int page, int size) {
+
+        User currentUser = getCurrentUserEntityFromSession();
+
+        Pageable pageable = PageRequest.of(
+                page,          // 0-based
+                size,          // npr. 10
+                Sort.by("transactionDate").descending()
+        );
+
+        return transactionRepository.findByUser(currentUser, pageable);
+    }
+
+    public Page<Transaction> searchTransactions(
+            TransactionFilterRequest filter,
+            int page,
+            int size
+    ) {
+        User user = getCurrentUserEntityFromSession();
+
+        Specification<Transaction> spec =
+                Specification.where(TransactionSpecification.forUser(user));
+
+        if (filter.description() != null && !filter.description().isBlank()) {
+            spec = spec.and(
+                    TransactionSpecification.descriptionLike(filter.description())
+            );
+        }
+
+        if (filter.categoryId() != null) {
+            spec = spec.and(
+                    TransactionSpecification.categoryEquals(filter.categoryId())
+            );
+        }
+
+        if (filter.categoryType() != null) {
+            spec = spec.and(
+                    TransactionSpecification.categoryTypeEquals(filter.categoryType())
+            );
+        }
+
+        if (filter.amountFrom() != null && filter.amountTo() != null) {
+            spec = spec.and(
+                    TransactionSpecification.amountBetween(
+                            filter.amountFrom(), filter.amountTo()
+                    )
+            );
+        }
+
+        if (filter.dateFrom() != null && filter.dateTo() != null) {
+            spec = spec.and(
+                    TransactionSpecification.dateBetween(
+                            filter.dateFrom(), filter.dateTo()
+                    )
+            );
+        }
+
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                resolveSort(filter)
+        );
+
+        return transactionRepository.findAll(spec, pageable);
+    }
+
+    private Sort resolveSort(TransactionFilterRequest filter) {
+        if ("amount".equalsIgnoreCase(filter.sortBy())) {
+            return "asc".equalsIgnoreCase(filter.sortDir())
+                    ? Sort.by("amount").ascending()
+                    : Sort.by("amount").descending();
+        }
+
+        // default: datum
+        return "asc".equalsIgnoreCase(filter.sortDir())
+                ? Sort.by("transactionDate").ascending()
+                : Sort.by("transactionDate").descending();
+    }
+
+    private User getCurrentUserEntityFromSession() {
+
+        Integer userId = (Integer) session.getAttribute("user");
+
+        if (userId == null) {
+            throw new IllegalStateException("Korisnik nije prijavljen");
+        }
+
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalStateException("Korisnik ne postoji"));
     }
 
     public List<Transaction> getTransactionsByUser(User user) {

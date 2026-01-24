@@ -1,5 +1,8 @@
 package com.havana.backend.controller;
 
+import com.havana.backend.data.AddTransactionRequest;
+import com.havana.backend.data.TransactionFilterRequest;
+import com.havana.backend.data.TransactionResponse;
 import com.havana.backend.model.Transaction;
 import com.havana.backend.model.User;
 import com.havana.backend.model.Category;
@@ -7,6 +10,7 @@ import com.havana.backend.service.TransactionService;
 import com.havana.backend.service.UserService;
 import com.havana.backend.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpSession;
@@ -24,17 +28,29 @@ public class TransactionController {
     private final CategoryRepository categoryRepository;
 
     @GetMapping
-    public ResponseEntity<?> getTransactions(HttpSession session) {
-        Object userId = session.getAttribute("user");
-        if (userId == null) return ResponseEntity.status(401).build();
-        
-        User user = userService.findById((Integer) userId);
-        List<Transaction> transactions = transactionService.getTransactionsByUser(user);
-        return ResponseEntity.ok(transactions);
+    public ResponseEntity<Page<TransactionResponse>> getMyTransactions(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+
+        Page<Transaction> transactions =
+                transactionService.getTransactionsForCurrentUser(page, size);
+
+        Page<TransactionResponse> response =
+                transactions.map(t -> new TransactionResponse(
+                        t.getId(),
+                        t.getAmount(),
+                        t.getTransactionDate(),
+                        t.getDescription()
+                ));
+
+        return ResponseEntity.ok(response);
     }
 
+    // za dodavanje transakcija
     @PostMapping
     public ResponseEntity<?> addTransaction(@RequestBody AddTransactionRequest request, HttpSession session) {
+        // provjera preko sessiona je li user ulogiran
         Object userId = session.getAttribute("user");
         if (userId == null) return ResponseEntity.status(401).build();
         
@@ -51,11 +67,13 @@ public class TransactionController {
         transaction.setAmount(request.amount());
         transaction.setTransactionDate(request.transactionDate());
         transaction.setDescription(request.description());
-        
+
+        // spremanje transakcije
         Transaction saved = transactionService.saveTransaction(transaction);
         return ResponseEntity.ok(saved);
     }
 
+    // brisanje preko ida transakcije
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteTransaction(@PathVariable Integer id, HttpSession session) {
         Object userId = session.getAttribute("user");
@@ -65,10 +83,26 @@ public class TransactionController {
         return ResponseEntity.ok().build();
     }
 
-    public static record AddTransactionRequest(
-            Integer categoryId,
-            BigDecimal amount,
-            LocalDate transactionDate,
-            String description
-    ) {}
+    // pretrazivanje na osnovi zeljenih filtera
+    @PostMapping("/search")
+    public ResponseEntity<Page<TransactionResponse>> search(
+            @RequestBody TransactionFilterRequest filter,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Page<Transaction> result =
+                transactionService.searchTransactions(filter, page, size);
+
+        Page<TransactionResponse> response =
+                result.map(t -> new TransactionResponse(
+                        t.getCategory() != null ? t.getCategory().getId() : null,
+                        t.getAmount(),
+                        t.getTransactionDate(),
+                        t.getDescription()
+                ));
+
+
+        return ResponseEntity.ok(response);
+    }
+
 }
