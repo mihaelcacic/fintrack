@@ -51,7 +51,7 @@ export default function Navbar() {
         </div>
 
         <div className="nav-right">
-          <span className="badge">{user.name}</span>
+          <span className="badge">{user.username}</span>
           <button className="btn-danger" onClick={onLogout}>
             Odjava
           </button>

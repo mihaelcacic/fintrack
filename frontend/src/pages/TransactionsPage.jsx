@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { getTransactions, saveTransactions } from "../data/storage";
 import TransactionForm from "../features/transactions/TransactionForm";
 import TransactionTable from "../features/transactions/TransactionTable";
 import TransactionFilters, {
@@ -11,11 +10,7 @@ import TransactionFilters, {
 export default function TransactionsPage() {
   const { user } = useAuth();
   const [transactions, setTransactions] = useState([]);
-
-  useEffect(() => {
-    setTransactions(getTransactions(user.id));
-  }, [user.id]);
-
+  const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     search: "",
     category: ALL,
@@ -24,70 +19,119 @@ export default function TransactionsPage() {
     to: "",
     minAmount: "",
     maxAmount: "",
-    sort: "date_desc", // default: najnovije
+    sort: "date_desc",
   });
 
-  const addTransaction = (tx) => {
-    const updated = [tx, ...transactions];
-    setTransactions(updated);
-    saveTransactions(user.id, updated);
-  };
+  const fetchTransactions = useCallback(async () => {
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
+    try {
+      const res = await fetch("/api/transactions", {
+        credentials: "include",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const formatted = data.map((t) => ({
+          id: t.id,
+          type: t.category?.type === "INCOME" ? "income" : "expense",
+          amount: +t.amount,
+          category: t.category?.name || "Ostalo",
+          date: t.transactionDate,
+          description: t.description || "",
+        }));
+        setTransactions(formatted);
+      }
+    } catch (err) {
+      console.error("Greška pri učitavanju transakcija", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id]);
 
-  const deleteTransaction = (id) => {
-    const updated = transactions.filter((t) => t.id !== id);
-    setTransactions(updated);
-    saveTransactions(user.id, updated);
-  };
+  useEffect(() => {
+    fetchTransactions();
+  }, [user?.id, fetchTransactions]);
+
+  const addTransaction = useCallback(
+    async (tx) => {
+      try {
+        const res = await fetch("/api/transactions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            categoryId: null,
+            amount: tx.amount,
+            transactionDate: tx.date,
+            description: tx.description,
+          }),
+        });
+
+        if (res.ok) {
+          fetchTransactions();
+        }
+      } catch (err) {
+        console.error("Greška pri dodavanju transakcije", err);
+      }
+    },
+    [fetchTransactions],
+  );
+
+  const deleteTransaction = useCallback(
+    async (id) => {
+      try {
+        const res = await fetch(`/api/transactions/${id}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
+
+        if (res.ok) {
+          fetchTransactions();
+        }
+      } catch (err) {
+        console.error("Greška pri brisanju transakcije", err);
+      }
+    },
+    [fetchTransactions],
+  );
 
   const totals = useMemo(() => {
     let income = 0;
     let expense = 0;
-    for (const t of transactions) {
+    transactions.forEach((t) => {
       if (t.type === "income") income += t.amount;
       else expense += t.amount;
-    }
+    });
     return { income, expense, saved: income - expense };
   }, [transactions]);
 
   const categories = useMemo(() => {
-    const set = new Set();
-    for (const t of transactions) set.add(t.category);
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
+    const set = new Set(transactions.map((t) => t.category));
+    return Array.from(set).sort();
   }, [transactions]);
 
   const filteredTransactions = useMemo(() => {
     const s = filters.search.trim().toLowerCase();
 
-    const filtered = transactions.filter((t) => {
-      // search
-      if (s) {
-        const desc = (t.description || "").toLowerCase();
-        if (!desc.includes(s)) return false;
-      }
-
-      // category
+    let filtered = transactions.filter((t) => {
+      if (s && !(t.description || "").toLowerCase().includes(s)) return false;
       if (filters.category !== ALL && t.category !== filters.category)
         return false;
-
-      // type
       if (filters.type !== ALL && t.type !== filters.type) return false;
-
-      // date range
       if (filters.from && t.date < filters.from) return false;
       if (filters.to && t.date > filters.to) return false;
 
-      // amount range
-      const min = filters.minAmount === "" ? null : Number(filters.minAmount);
-      const max = filters.maxAmount === "" ? null : Number(filters.maxAmount);
-
-      if (min !== null && Number.isFinite(min) && t.amount < min) return false;
-      if (max !== null && Number.isFinite(max) && t.amount > max) return false;
+      const min = filters.minAmount ? Number(filters.minAmount) : null;
+      const max = filters.maxAmount ? Number(filters.maxAmount) : null;
+      if (min !== null && t.amount < min) return false;
+      if (max !== null && t.amount > max) return false;
 
       return true;
     });
 
-    // ===== SORTIRANJE =====
-    return filtered.slice().sort((a, b) => {
+    return filtered.sort((a, b) => {
       switch (filters.sort) {
         case "date_asc":
           return a.date.localeCompare(b.date);
@@ -103,13 +147,16 @@ export default function TransactionsPage() {
     });
   }, [transactions, filters]);
 
+  if (loading) return <div className="container">Učitavanje...</div>;
+
   return (
     <div className="container">
       <div className="row" style={{ justifyContent: "space-between" }}>
         <div>
           <h2>Transakcije</h2>
           <p className="muted" style={{ marginTop: 6 }}>
-            Korisnik: <b>{user.name}</b> ({user.email})
+            Korisnik: <b>{user?.username ?? user?.email ?? "—"}</b> (
+            {user?.email ?? "—"})
           </p>
           <p style={{ marginTop: 10 }}>
             <Link to="/dashboard">← Natrag na nadzornu ploču</Link>
