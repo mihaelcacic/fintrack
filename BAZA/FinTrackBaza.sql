@@ -8,7 +8,7 @@ CREATE TABLE users (
 
 CREATE TABLE categories (
                             id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                            user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            user_id INT REFERENCES users(id) ON DELETE CASCADE,
                             name VARCHAR(100) NOT NULL,
                             type VARCHAR(10) NOT NULL CHECK (type IN ('INCOME', 'EXPENSE')),
                             UNIQUE (user_id, name)

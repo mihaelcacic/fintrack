@@ -4,19 +4,14 @@ import com.havana.backend.data.AddTransactionRequest;
 import com.havana.backend.data.TransactionFilterRequest;
 import com.havana.backend.data.TransactionResponse;
 import com.havana.backend.model.Transaction;
-import com.havana.backend.model.User;
-import com.havana.backend.model.Category;
 import com.havana.backend.service.TransactionService;
 import com.havana.backend.service.UserService;
 import com.havana.backend.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import jakarta.servlet.http.HttpSession;
-import java.time.LocalDate;
-import java.math.BigDecimal;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/transactions")
@@ -30,11 +25,12 @@ public class TransactionController {
     @GetMapping
     public ResponseEntity<Page<TransactionResponse>> getMyTransactions(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "10") int size,
+            Authentication authentication
     ) {
 
-        Page<Transaction> transactions =
-                transactionService.getTransactionsForCurrentUser(page, size);
+        Page<Transaction> transactions = transactionService
+                .getTransactionsForCurrentUser(page, size, (Integer) authentication.getPrincipal());
 
         Page<TransactionResponse> response =
                 transactions.map(t -> new TransactionResponse(
@@ -49,35 +45,20 @@ public class TransactionController {
 
     // za dodavanje transakcija
     @PostMapping
-    public ResponseEntity<?> addTransaction(@RequestBody AddTransactionRequest request, HttpSession session) {
-        // provjera preko sessiona je li user ulogiran
-        Object userId = session.getAttribute("user");
-        if (userId == null) return ResponseEntity.status(401).build();
-        
-        User user = userService.findById((Integer) userId);
-        
-        Category category = null;
-        if (request.categoryId() != null) {
-            category = categoryRepository.findById(request.categoryId()).orElse(null);
-        }
-        
-        Transaction transaction = new Transaction();
-        transaction.setUser(user);
-        transaction.setCategory(category);
-        transaction.setAmount(request.amount());
-        transaction.setTransactionDate(request.transactionDate());
-        transaction.setDescription(request.description());
+    public ResponseEntity<?> addTransaction(@RequestBody AddTransactionRequest request, Authentication authentication) {
+        Integer userId = (Integer) authentication.getPrincipal();
+        if (userId == null) return ResponseEntity.status(401).body("You are not logged in");
 
         // spremanje transakcije
-        Transaction saved = transactionService.saveTransaction(transaction);
+        Transaction saved = transactionService.saveTransaction(request, userId);
         return ResponseEntity.ok(saved);
     }
 
     // brisanje preko ida transakcije
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteTransaction(@PathVariable Integer id, HttpSession session) {
-        Object userId = session.getAttribute("user");
-        if (userId == null) return ResponseEntity.status(401).build();
+    public ResponseEntity<?> deleteTransaction(@PathVariable Integer id, Authentication authentication) {
+        Integer userId = (Integer) authentication.getPrincipal();
+        if (userId == null) return ResponseEntity.status(401).body("You are not logged in");
         
         transactionService.deleteTransaction(id);
         return ResponseEntity.ok().build();
@@ -88,10 +69,11 @@ public class TransactionController {
     public ResponseEntity<Page<TransactionResponse>> search(
             @RequestBody TransactionFilterRequest filter,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "10") int size,
+            Authentication authentication
     ) {
         Page<Transaction> result =
-                transactionService.searchTransactions(filter, page, size);
+                transactionService.searchTransactions(filter, page, size, (Integer) authentication.getPrincipal());
 
         Page<TransactionResponse> response =
                 result.map(t -> new TransactionResponse(

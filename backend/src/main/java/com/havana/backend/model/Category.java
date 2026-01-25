@@ -18,14 +18,15 @@ public class Category {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "user_id")
+    @ManyToOne(optional = true)
+    @JoinColumn(name = "user_id", nullable = true)
     @JsonIgnore
     private User user;
 
     @Column(nullable = false)
     private String name;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String type; // "INCOME" | "EXPENSE"
+    private CategoryType type;
 }

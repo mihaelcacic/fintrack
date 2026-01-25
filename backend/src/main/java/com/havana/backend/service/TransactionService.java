@@ -1,8 +1,11 @@
 package com.havana.backend.service;
 
+import com.havana.backend.data.AddTransactionRequest;
 import com.havana.backend.data.TransactionFilterRequest;
+import com.havana.backend.model.Category;
 import com.havana.backend.model.Transaction;
 import com.havana.backend.model.User;
+import com.havana.backend.repository.CategoryRepository;
 import com.havana.backend.repository.TransactionRepository;
 import com.havana.backend.repository.SavingGoalRepository;
 import com.havana.backend.repository.UserRepository;
@@ -14,9 +17,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -32,6 +32,7 @@ public class TransactionService {
     private final SavingGoalRepository savingGoalRepository;
     private final UserRepository userRepository;
     private final HttpSession session;
+    private final CategoryRepository categoryRepository;
 
     public List<Map<String, Object>> getSpendingByCategory(User user) {
         List<Transaction> transactions = transactionRepository.findByUser(user);
@@ -74,9 +75,10 @@ public class TransactionService {
         return result;
     }
 
-    public Page<Transaction> getTransactionsForCurrentUser(int page, int size) {
+    public Page<Transaction> getTransactionsForCurrentUser(int page, int size, Integer userId) {
 
-        User currentUser = getCurrentUserEntityFromSession();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
         Pageable pageable = PageRequest.of(
                 page,          // 0-based
@@ -84,15 +86,12 @@ public class TransactionService {
                 Sort.by("transactionDate").descending()
         );
 
-        return transactionRepository.findByUser(currentUser, pageable);
+        return transactionRepository.findByUser(user, pageable);
     }
 
-    public Page<Transaction> searchTransactions(
-            TransactionFilterRequest filter,
-            int page,
-            int size
-    ) {
-        User user = getCurrentUserEntityFromSession();
+    public Page<Transaction> searchTransactions(TransactionFilterRequest filter, int page, int size, Integer userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
         Specification<Transaction> spec =
                 Specification.where(TransactionSpecification.forUser(user));
@@ -153,27 +152,24 @@ public class TransactionService {
                 : Sort.by("transactionDate").descending();
     }
 
-    private User getCurrentUserEntityFromSession() {
 
-        Integer userId = (Integer) session.getAttribute("user");
+    public Transaction saveTransaction(AddTransactionRequest request, Integer userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if (userId == null) {
-            throw new IllegalStateException("Korisnik nije prijavljen");
-        }
+        Category category = categoryRepository.findById(request.categoryId())
+                .orElseThrow(() -> new RuntimeException("Category not found"));
 
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalStateException("Korisnik ne postoji"));
-    }
-
-    public List<Transaction> getTransactionsByUser(User user) {
-    return transactionRepository.findByUser(user);
-    }
-
-    public Transaction saveTransaction(Transaction transaction) {
-    return transactionRepository.save(transaction);
+        Transaction transaction = new Transaction();
+        transaction.setUser(user);
+        transaction.setCategory(category);
+        transaction.setAmount(request.amount());
+        transaction.setTransactionDate(request.transactionDate());
+        transaction.setDescription(request.description());
+        return transactionRepository.save(transaction);
     }
 
     public void deleteTransaction(Integer id) {
-    transactionRepository.deleteById(id);
+        transactionRepository.deleteById(id);
     }
 }
