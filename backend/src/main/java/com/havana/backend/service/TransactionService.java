@@ -1,14 +1,20 @@
 package com.havana.backend.service;
 
+import com.havana.backend.data.ImportResultResponse;
 import com.havana.backend.data.TransactionFilterRequest;
+import com.havana.backend.model.Category;
 import com.havana.backend.model.Transaction;
 import com.havana.backend.model.User;
+import com.havana.backend.repository.CategoryRepository;
 import com.havana.backend.repository.TransactionRepository;
 import com.havana.backend.repository.SavingGoalRepository;
 import com.havana.backend.repository.UserRepository;
 import com.havana.backend.specification.TransactionSpecification;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -18,7 +24,12 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -32,6 +43,7 @@ public class TransactionService {
     private final SavingGoalRepository savingGoalRepository;
     private final UserRepository userRepository;
     private final HttpSession session;
+    private final CategoryRepository categoryRepository;
 
     public List<Map<String, Object>> getSpendingByCategory(User user) {
         List<Transaction> transactions = transactionRepository.findByUser(user);
@@ -74,6 +86,7 @@ public class TransactionService {
         return result;
     }
 
+    // dohvacanje transakcija, ali samo po 10 njih
     public Page<Transaction> getTransactionsForCurrentUser(int page, int size) {
 
         User currentUser = getCurrentUserEntityFromSession();
@@ -87,6 +100,7 @@ public class TransactionService {
         return transactionRepository.findByUser(currentUser, pageable);
     }
 
+    // metoda za pretrazivanje transakcija
     public Page<Transaction> searchTransactions(
             TransactionFilterRequest filter,
             int page,
@@ -140,6 +154,7 @@ public class TransactionService {
         return transactionRepository.findAll(spec, pageable);
     }
 
+    // sortiranje
     private Sort resolveSort(TransactionFilterRequest filter) {
         if ("amount".equalsIgnoreCase(filter.sortBy())) {
             return "asc".equalsIgnoreCase(filter.sortDir())
@@ -151,6 +166,85 @@ public class TransactionService {
         return "asc".equalsIgnoreCase(filter.sortDir())
                 ? Sort.by("transactionDate").ascending()
                 : Sort.by("transactionDate").descending();
+    }
+
+    // metoda za importanje csva koji je nekoc bio excell tablica, tako se unose transakcije
+    public ImportResultResponse importCsv(MultipartFile file) {
+
+        User user = getCurrentUserEntityFromSession();
+
+        int success = 0;
+        int failed = 0;
+
+        try (
+                Reader reader = new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8);
+                CSVParser parser = CSVFormat.DEFAULT
+                        .withFirstRecordAsHeader()
+                        .withIgnoreHeaderCase()
+                        .withTrim()
+                        .parse(reader)
+        ) {
+
+            for (CSVRecord record : parser) {
+                try {
+                    Transaction transaction =
+                            mapCsvRecordToTransaction(record, user);
+
+                    transactionRepository.save(transaction);
+                    success++;
+                } catch (Exception e) {
+                    failed++;
+                }
+            }
+
+        } catch (IOException e) {
+            throw new RuntimeException("CSV parsing failed", e);
+        }
+
+        return new ImportResultResponse(success, failed);
+    }
+
+    private Transaction mapCsvRecordToTransaction(
+            CSVRecord record,
+            User user
+    ) {
+
+        LocalDate date =
+                LocalDate.parse(record.get("transaction_date"));
+
+        BigDecimal amount =
+                new BigDecimal(record.get("amount"));
+
+        String description =
+                record.get("description");
+
+        String categoryName =
+                record.get("category_name");
+
+        String categoryType =
+                record.get("category_type");
+
+        Category category =
+                categoryRepository
+                        .findByNameAndUserAndType(
+                                categoryName, user, categoryType
+                        )
+                        .orElseGet(() -> {
+                            Category c = new Category();
+                            c.setName(categoryName);
+                            c.setType(categoryType);
+                            c.setUser(user);
+                            return categoryRepository.save(c);
+                        });
+
+        Transaction transaction = new Transaction();
+        transaction.setUser(user);
+        transaction.setCategory(category);
+        transaction.setAmount(amount);
+        transaction.setTransactionDate(date);
+        transaction.setDescription(description);
+
+        return transaction;
     }
 
     private User getCurrentUserEntityFromSession() {
