@@ -1,11 +1,16 @@
 package com.havana.backend.data;
 
+import com.havana.backend.model.CategoryType;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public record TransactionResponse(
-        Integer categoryId,
+        Integer id,
         BigDecimal amount,
         LocalDate transactionDate,
-        String description)
-{}
+        String description,
+        Integer categoryId,
+        String categoryName,
+        CategoryType categoryType
+) {}

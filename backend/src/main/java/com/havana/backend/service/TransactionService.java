@@ -4,6 +4,7 @@ import com.havana.backend.data.AddTransactionRequest;
 import com.havana.backend.data.ImportResultResponse;
 import com.havana.backend.data.TransactionFilterRequest;
 import com.havana.backend.model.Category;
+import com.havana.backend.model.CategoryType;
 import com.havana.backend.model.Transaction;
 import com.havana.backend.model.User;
 import com.havana.backend.repository.CategoryRepository;
@@ -11,7 +12,6 @@ import com.havana.backend.repository.TransactionRepository;
 import com.havana.backend.repository.SavingGoalRepository;
 import com.havana.backend.repository.UserRepository;
 import com.havana.backend.specification.TransactionSpecification;
-import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -21,11 +21,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -43,7 +42,6 @@ public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final SavingGoalRepository savingGoalRepository;
     private final UserRepository userRepository;
-    private final HttpSession session;
     private final CategoryRepository categoryRepository;
 
     public List<Map<String, Object>> getSpendingByCategory(User user) {
@@ -166,9 +164,10 @@ public class TransactionService {
     }
 
     // metoda za importanje csva koji je nekoc bio excell tablica, tako se unose transakcije
-    public ImportResultResponse importCsv(MultipartFile file) {
+    public ImportResultResponse importCsv(MultipartFile file, Integer userId) {
 
-        User user = getCurrentUserEntityFromSession();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
         int success = 0;
         int failed = 0;
@@ -218,8 +217,8 @@ public class TransactionService {
         String categoryName =
                 record.get("category_name");
 
-        String categoryType =
-                record.get("category_type");
+        CategoryType categoryType =
+                CategoryType.valueOf(record.get("category_type").trim().toUpperCase());
 
         Category category =
                 categoryRepository
@@ -248,8 +247,11 @@ public class TransactionService {
     public Transaction saveTransaction(AddTransactionRequest request, Integer userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
         Category category = categoryRepository.findById(request.categoryId())
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+                .filter(c -> c.getUser() == null || c.getUser().getId().equals(userId))
+                .orElseThrow(() -> new RuntimeException("Category not allowed"));
+
         Transaction transaction = new Transaction();
         transaction.setUser(user);
         transaction.setCategory(category);
@@ -257,8 +259,16 @@ public class TransactionService {
         transaction.setTransactionDate(request.transactionDate());
         transaction.setDescription(request.description());
         return transactionRepository.save(transaction);
+    }
 
-    public void deleteTransaction(Integer id) {
-        transactionRepository.deleteById(id);
+    public void deleteTransaction(Integer id, Integer userId) {
+        Transaction t = transactionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Transaction not found"));
+
+        if (!t.getUser().getId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
+        }
+
+        transactionRepository.delete(t);
     }
 }

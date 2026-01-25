@@ -5,13 +5,8 @@ import com.havana.backend.data.ImportResultResponse;
 import com.havana.backend.data.TransactionFilterRequest;
 import com.havana.backend.data.TransactionResponse;
 import com.havana.backend.model.Transaction;
-import com.havana.backend.model.User;
-import com.havana.backend.model.Category;
-import com.havana.backend.repository.UserRepository;
 import com.havana.backend.service.TransactionService;
 import com.havana.backend.service.TransactionTemplateXlsxService;
-import com.havana.backend.service.UserService;
-import com.havana.backend.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.data.domain.Page;
@@ -20,13 +15,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import jakarta.servlet.http.HttpSession;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayInputStream;
-import java.time.LocalDate;
-import java.math.BigDecimal;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/transactions")
@@ -34,8 +25,6 @@ import java.util.List;
 public class TransactionController {
 
     private final TransactionService transactionService;
-    private final UserService userService;
-    private final CategoryRepository categoryRepository;
     private final TransactionTemplateXlsxService transactionTemplateXlsxService;
 
     // prikazujemo 10 transakcija po stranici koje pripadaju nekom korisniku
@@ -54,7 +43,10 @@ public class TransactionController {
                         t.getId(),
                         t.getAmount(),
                         t.getTransactionDate(),
-                        t.getDescription()
+                        t.getDescription(),
+                        t.getCategory() != null ? t.getCategory().getId() : null,
+                        t.getCategory() != null ? t.getCategory().getName() : "Ostalo",
+                        t.getCategory() != null ? t.getCategory().getType() : null
                 ));
 
         return ResponseEntity.ok(response);
@@ -77,7 +69,7 @@ public class TransactionController {
         Integer userId = (Integer) authentication.getPrincipal();
         if (userId == null) return ResponseEntity.status(401).body("You are not logged in");
         
-        transactionService.deleteTransaction(id);
+        transactionService.deleteTransaction(id, (Integer) authentication.getPrincipal());
         return ResponseEntity.ok().build();
     }
 
@@ -94,12 +86,14 @@ public class TransactionController {
 
         Page<TransactionResponse> response =
                 result.map(t -> new TransactionResponse(
-                        t.getCategory() != null ? t.getCategory().getId() : null,
+                        t.getId(),
                         t.getAmount(),
                         t.getTransactionDate(),
-                        t.getDescription()
+                        t.getDescription(),
+                        t.getCategory() != null ? t.getCategory().getId() : null,
+                        t.getCategory() != null ? t.getCategory().getName() : "Ostalo",
+                        t.getCategory() != null ? t.getCategory().getType() : null
                 ));
-
 
         return ResponseEntity.ok(response);
     }
@@ -129,10 +123,11 @@ public class TransactionController {
 
     @PostMapping("/import")
     public ResponseEntity<ImportResultResponse> importTransactions(
-            @RequestParam("file") MultipartFile file
+            @RequestParam("file") MultipartFile file,
+            Authentication authentication
     ) {
         ImportResultResponse result =
-                transactionService.importCsv(file);
+                transactionService.importCsv(file, (Integer) authentication.getPrincipal());
 
         return ResponseEntity.ok(result);
     }

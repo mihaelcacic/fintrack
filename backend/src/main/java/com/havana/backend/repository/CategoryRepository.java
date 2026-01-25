@@ -18,7 +18,7 @@ public interface CategoryRepository extends JpaRepository<Category, Integer> {
 
     Optional<Category> findByUserAndName(User user, String name);
 
-    Optional<Category> findByNameAndUserAndType(String name, User user, String type);
+    Optional<Category> findByNameAndUserAndType(String name, User user, CategoryType type);
 
     @Query("""
     SELECT c FROM Category c
