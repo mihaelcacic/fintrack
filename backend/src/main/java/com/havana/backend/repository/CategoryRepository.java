@@ -4,6 +4,8 @@ import com.havana.backend.model.Category;
 import com.havana.backend.model.CategoryType;
 import com.havana.backend.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -17,4 +19,11 @@ public interface CategoryRepository extends JpaRepository<Category, Integer> {
     Optional<Category> findByUserAndName(User user, String name);
 
     Optional<Category> findByNameAndUserAndType(String name, User user, String type);
+
+    @Query("""
+    SELECT c FROM Category c
+    WHERE c.user IS NULL OR c.user.id = :userId
+    """)
+    List<Category> findForUser(@Param("userId") Integer userId);
+
 }

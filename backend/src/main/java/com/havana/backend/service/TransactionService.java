@@ -1,5 +1,6 @@
 package com.havana.backend.service;
 
+import com.havana.backend.data.AddTransactionRequest;
 import com.havana.backend.data.ImportResultResponse;
 import com.havana.backend.data.TransactionFilterRequest;
 import com.havana.backend.model.Category;
@@ -86,10 +87,10 @@ public class TransactionService {
         return result;
     }
 
-    // dohvacanje transakcija, ali samo po 10 njih
-    public Page<Transaction> getTransactionsForCurrentUser(int page, int size) {
+    public Page<Transaction> getTransactionsForCurrentUser(int page, int size, Integer userId) {
 
-        User currentUser = getCurrentUserEntityFromSession();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
         Pageable pageable = PageRequest.of(
                 page,          // 0-based
@@ -97,16 +98,12 @@ public class TransactionService {
                 Sort.by("transactionDate").descending()
         );
 
-        return transactionRepository.findByUser(currentUser, pageable);
+        return transactionRepository.findByUser(user, pageable);
     }
 
-    // metoda za pretrazivanje transakcija
-    public Page<Transaction> searchTransactions(
-            TransactionFilterRequest filter,
-            int page,
-            int size
-    ) {
-        User user = getCurrentUserEntityFromSession();
+    public Page<Transaction> searchTransactions(TransactionFilterRequest filter, int page, int size, Integer userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
         Specification<Transaction> spec =
                 Specification.where(TransactionSpecification.forUser(user));
@@ -247,27 +244,21 @@ public class TransactionService {
         return transaction;
     }
 
-    private User getCurrentUserEntityFromSession() {
 
-        Integer userId = (Integer) session.getAttribute("user");
-
-        if (userId == null) {
-            throw new IllegalStateException("Korisnik nije prijavljen");
-        }
-
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalStateException("Korisnik ne postoji"));
-    }
-
-    public List<Transaction> getTransactionsByUser(User user) {
-    return transactionRepository.findByUser(user);
-    }
-
-    public Transaction saveTransaction(Transaction transaction) {
-    return transactionRepository.save(transaction);
-    }
+    public Transaction saveTransaction(AddTransactionRequest request, Integer userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        Category category = categoryRepository.findById(request.categoryId())
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+        Transaction transaction = new Transaction();
+        transaction.setUser(user);
+        transaction.setCategory(category);
+        transaction.setAmount(request.amount());
+        transaction.setTransactionDate(request.transactionDate());
+        transaction.setDescription(request.description());
+        return transactionRepository.save(transaction);
 
     public void deleteTransaction(Integer id) {
-    transactionRepository.deleteById(id);
+        transactionRepository.deleteById(id);
     }
 }
