@@ -1,5 +1,6 @@
 package com.havana.backend.repository;
 
+import com.havana.backend.model.Category;
 import com.havana.backend.model.Transaction;
 import com.havana.backend.model.User;
 import org.springframework.data.domain.Page;
@@ -23,4 +24,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Intege
     Page<Transaction> findByUser(User user, Pageable pageable);
 
     List<Transaction> findByUserAndCategoryId(User user, Integer categoryId);
+
+    boolean existsByCategory(Category category);
+
 }

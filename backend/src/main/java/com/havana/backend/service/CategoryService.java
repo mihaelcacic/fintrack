@@ -17,8 +17,9 @@ public class CategoryService {
 
     private final CategoryRepository categoryRepository;
     private final UserService userService;
+    private final TransactionRepository transactionRepository;
 
-    public Category createCatgeroy(CreateCategoryRequest request, Integer userId) {
+    public Category createCategory(CreateCategoryRequest request, Integer userId) {
         Category category = new Category();
         category.setName(request.name());
         category.setType(request.type());
@@ -29,5 +30,37 @@ public class CategoryService {
 
     public List<Category> getCategoriesForUser(Integer userId) {
         return categoryRepository.findForUser(userId);
+    }
+
+    public void deleteCategoryForUser(Integer categoryId, Integer userId) {
+
+        Category category = categoryRepository
+                .findByIdAndUserId(categoryId, userId)
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Kategorija ne postoji ili ne pripada korisniku")
+                );
+
+        // zabrani brisanje kategorije ako ima transakcija
+        if (transactionRepository.existsByCategory(category)) {
+            throw new IllegalStateException(
+                    "Kategorija se ne može obrisati jer sadrži transakcije"
+            );
+        }
+
+        // nitko nemre obrisat glavne kategorije
+        if (category.getUser() == null) {
+            throw new IllegalStateException(
+                    "Globalne kategorije se ne mogu brisati"
+            );
+        }
+
+        // ne moze se obrisati kategorija drugog korisnika
+        if (!category.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException(
+                    "Kategorija ne pripada korisniku"
+            );
+        }
+
+        categoryRepository.delete(category);
     }
 }

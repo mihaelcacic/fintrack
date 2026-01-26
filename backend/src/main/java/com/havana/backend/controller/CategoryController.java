@@ -19,13 +19,25 @@ public class CategoryController {
 
     @PostMapping
     public ResponseEntity<?> createCategory(Authentication authentication, @RequestBody CreateCategoryRequest request) {
-        Category category = categoryService.createCatgeroy(request, (Integer) authentication.getPrincipal());
+        Category category = categoryService.createCategory(request, (Integer) authentication.getPrincipal());
         return ResponseEntity.ok(category);
     }
 
     @GetMapping
     public ResponseEntity<?> getCategories(Authentication authentication) {
         return ResponseEntity.ok(categoryService.getCategoriesForUser((Integer) authentication.getPrincipal()));
+    }
+
+    @DeleteMapping("/{Id}")
+    public ResponseEntity<?> deleteCategory(
+            @PathVariable Integer categoryId,
+            Authentication authentication
+    ) {
+        Integer userId = (Integer) authentication.getPrincipal();
+
+        categoryService.deleteCategoryForUser(categoryId, userId);
+
+        return ResponseEntity.noContent().build();
     }
 
 }
