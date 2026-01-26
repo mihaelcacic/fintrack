@@ -84,6 +84,15 @@ export const categories = {
     }
     return parseJSON(res);
   },
+
+  delete: async (id) => {
+    const res = await fetch(`${API_BASE}/categories/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to delete category");
+    return res.ok;
+  },
 };
 
 // =====================
@@ -181,5 +190,56 @@ export const dashboard = {
     });
     if (!res.ok) throw new Error("Failed to fetch weekly goal");
     return parseJSON(res);
+  },
+};
+
+// =====================
+// SAVINGS ENDPOINTS
+// =====================
+export const savings = {
+  getAll: async () => {
+    const res = await fetch(`${API_BASE}/savings-goals`, {
+      method: "GET",
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to fetch savings goals");
+    return parseJSON(res);
+  },
+
+  create: async (name, targetAmount, deadline) => {
+    const res = await fetch(`${API_BASE}/savings-goals`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, targetAmount, deadline }),
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const data = await parseJSON(res);
+      throw new Error(data.message || "Failed to create savings goal");
+    }
+    return parseJSON(res);
+  },
+
+  addSavings: async (goalId, amount) => {
+    const res = await fetch(`${API_BASE}/savings-goals/${goalId}/add`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount }),
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const data = await parseJSON(res);
+      throw new Error(data.message || "Failed to add savings");
+    }
+    return parseJSON(res);
+  },
+
+  delete: async (goalId) => {
+    const res = await fetch(`${API_BASE}/savings-goals/${goalId}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to delete savings goal");
+    return res.ok;
   },
 };

@@ -153,7 +153,7 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Tjedni cilj */}
+        {/* Tjedni budžet */}
         <div
           style={{
             background: "var(--panel)",
@@ -163,7 +163,7 @@ export default function DashboardPage() {
             backdropFilter: "blur(10px)",
           }}
         >
-          <h3>Tjedni cilj potrošnje</h3>
+          <h3>Tjedni budžet</h3>
           {weeklyData ? (
             <div>
               <div style={{ marginBottom: 16 }}>

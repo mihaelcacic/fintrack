@@ -16,6 +16,11 @@ export default function TransactionForm({ onAdd, onCategoriesChange }) {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [creatingCategory, setCreatingCategory] = useState(false);
 
+  // Modal za brisanje kategorije
+  const [showDeleteCategory, setShowDeleteCategory] = useState(false);
+  const [searchDeleteCategory, setSearchDeleteCategory] = useState("");
+  const [deletingCategoryId, setDeletingCategoryId] = useState(null);
+
   // Učitaj kategorije
   useEffect(() => {
     const fetchCategories = async () => {
@@ -77,6 +82,37 @@ export default function TransactionForm({ onAdd, onCategoriesChange }) {
       console.error(error);
     } finally {
       setCreatingCategory(false);
+    }
+  };
+
+  const handleDeleteCategory = async (catId) => {
+    if (
+      !window.confirm("Jeste li sigurni da želite obrisati ovu kategoriju?")
+    ) {
+      return;
+    }
+
+    try {
+      // Pozovi backend za brisanje
+      await api.categories.delete(catId);
+
+      // Obriši iz frontend state-a
+      setCategories(categories.filter((c) => c.id !== catId));
+      setSearchDeleteCategory("");
+      setErr("");
+
+      // Ako je obrisana kategorija bila odabrana, postavi novu
+      if (categoryId === catId) {
+        const newDefault = categories.find(
+          (c) =>
+            c.id !== catId &&
+            c.type === (type === "income" ? "INCOME" : "EXPENSE"),
+        );
+        setCategoryId(newDefault?.id ?? null);
+      }
+    } catch (error) {
+      setErr("Greška pri brisanju kategorije");
+      console.error(error);
     }
   };
 
@@ -188,6 +224,112 @@ export default function TransactionForm({ onAdd, onCategoriesChange }) {
         </div>
       )}
 
+      {/* Modal za brisanje kategorije */}
+      {showDeleteCategory && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+          onClick={() => setShowDeleteCategory(false)}
+        >
+          <div
+            style={{
+              background: "var(--bg)",
+              padding: 24,
+              borderRadius: 8,
+              border: "1px solid var(--border)",
+              maxWidth: 500,
+              width: "90%",
+              maxHeight: "70vh",
+              display: "flex",
+              flexDirection: "column",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ marginTop: 0 }}>Obriši kategoriju</h3>
+
+            <input
+              type="text"
+              placeholder="Pretraži kategorije..."
+              value={searchDeleteCategory}
+              onChange={(e) => setSearchDeleteCategory(e.target.value)}
+              style={{ marginBottom: 16, padding: 8 }}
+            />
+
+            <div style={{ flex: 1, overflowY: "auto", marginBottom: 16 }}>
+              {categories
+                .filter((cat) =>
+                  cat.name
+                    .toLowerCase()
+                    .includes(searchDeleteCategory.toLowerCase()),
+                )
+                .map((cat) => (
+                  <div
+                    key={cat.id}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      padding: 12,
+                      marginBottom: 8,
+                      background: "var(--panel)",
+                      borderRadius: 4,
+                      border: "1px solid var(--border)",
+                    }}
+                  >
+                    <div>
+                      <b>{cat.name}</b>
+                      <span
+                        style={{
+                          marginLeft: 12,
+                          fontSize: 12,
+                          color: "var(--muted)",
+                        }}
+                      >
+                        {cat.type === "INCOME" ? "Prihod" : "Trošak"}
+                      </span>
+                    </div>
+                    <button
+                      className="btn-danger"
+                      onClick={() => handleDeleteCategory(cat.id)}
+                      style={{ padding: "6px 12px", fontSize: 12 }}
+                    >
+                      Obriši
+                    </button>
+                  </div>
+                ))}
+              {categories.filter((cat) =>
+                cat.name
+                  .toLowerCase()
+                  .includes(searchDeleteCategory.toLowerCase()),
+              ).length === 0 && (
+                <p className="muted" style={{ textAlign: "center" }}>
+                  Nema kategorija koje odgovaraju pretrazi
+                </p>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowDeleteCategory(false)}
+              className="btn-secondary"
+              style={{ width: "100%" }}
+            >
+              Zatvori
+            </button>
+          </div>
+        </div>
+      )}
+
       <div style={{ padding: 16, border: "1px solid #333", borderRadius: 8 }}>
         <h3 style={{ marginTop: 0 }}>Unos transakcije</h3>
 
@@ -233,13 +375,24 @@ export default function TransactionForm({ onAdd, onCategoriesChange }) {
                   ))}
                 </select>
               </label>
-              <button
-                type="button"
-                onClick={() => setShowNewCategory(true)}
-                className="btn-secondary"
-              >
-                + Dodaj novu kategoriju
-              </button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setShowNewCategory(true)}
+                  className="btn-secondary"
+                  style={{ flex: 1 }}
+                >
+                  + Dodaj novu kategoriju
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteCategory(true)}
+                  className="btn-secondary"
+                  style={{ flex: 1 }}
+                >
+                  − Obriši kategoriju
+                </button>
+              </div>
             </div>
 
             <label>

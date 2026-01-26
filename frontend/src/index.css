@@ -324,3 +324,199 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   border-color: rgba(239, 68, 68, 0.45);
   background: rgba(239, 68, 68, 0.14);
 }
+
+/* ========== RESPONSIVE DESIGN ========== */
+
+/* Tablet (768px and down) */
+@media (max-width: 768px) {
+  .container {
+    padding: 16px 12px 48px;
+  }
+
+  .card {
+    padding: 12px;
+  }
+
+  h2 {
+    font-size: 18px;
+  }
+
+  h3 {
+    font-size: 16px;
+  }
+
+  .row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .row > div {
+    width: 100% !important;
+  }
+
+  .navbar-inner {
+    flex-wrap: wrap;
+    padding: 8px 12px;
+  }
+
+  .brand {
+    font-size: 14px;
+  }
+
+  .nav-links {
+    width: 100%;
+    order: 3;
+  }
+
+  .nav-link {
+    padding: 6px 8px;
+    font-size: 13px;
+  }
+
+  .nav-right {
+    flex: 1;
+    justify-content: flex-end;
+  }
+
+  button {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  input, select {
+    padding: 8px 10px;
+    font-size: 14px;
+  }
+
+  label {
+    gap: 4px;
+    font-size: 13px;
+  }
+
+  th, td {
+    padding: 8px;
+    font-size: 12px;
+  }
+
+  table {
+    border: none;
+    border-radius: 0;
+  }
+
+  .badge {
+    padding: 3px 8px;
+    font-size: 11px;
+  }
+
+  .date-range-inner {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .date-sep {
+    display: none;
+  }
+
+  /* Skrivanje gumbova na mobitelu za ekonomiju mjesta */
+  .nav-link {
+    margin: 4px 2px;
+  }
+
+  /* Responsivne tabele */
+  .filters-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+/* Mobile (480px and down) */
+@media (max-width: 480px) {
+  .container {
+    padding: 12px 8px 40px;
+    max-width: 100%;
+  }
+
+  .card {
+    padding: 10px;
+    border-radius: 8px;
+  }
+
+  h2 {
+    font-size: 16px;
+  }
+
+  h3 {
+    font-size: 14px;
+  }
+
+  .navbar-inner {
+    padding: 6px 8px;
+  }
+
+  .brand {
+    font-size: 12px;
+  }
+
+  .brand-dot {
+    width: 8px;
+    height: 8px;
+  }
+
+  .nav-links {
+    gap: 4px;
+  }
+
+  .nav-link {
+    padding: 4px 6px;
+    font-size: 11px;
+  }
+
+  button {
+    padding: 6px 8px;
+    font-size: 12px;
+    width: 100%;
+  }
+
+  input, select {
+    padding: 6px 8px;
+    font-size: 13px;
+    width: 100%;
+  }
+
+  label {
+    gap: 3px;
+    font-size: 12px;
+  }
+
+  th, td {
+    padding: 6px;
+    font-size: 11px;
+  }
+
+  .muted {
+    font-size: 11px;
+  }
+
+  .filter-bar {
+    padding: 8px;
+    margin-top: 8px;
+  }
+
+  /* Čini div-ove sa flex-om kao blok na mobitelu */
+  [style*="display: flex"] {
+    flex-direction: column;
+  }
+
+  /* Inline gumbi postaju vertical stack */
+  .filters-row {
+    grid-template-columns: 1fr;
+  }
+
+  /* Sažetak kartice - jednostavniji na mobitelu */
+  .card[style*="minWidth"] {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+}
