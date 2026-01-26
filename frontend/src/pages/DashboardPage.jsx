@@ -1,17 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
-import {
-  PieChart,
-  Pie,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
+import { PieChart, Pie, Tooltip, ResponsiveContainer } from "recharts";
+import * as api from "../services/api";
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -22,19 +12,63 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const spendingRes = await fetch("/api/dashboard/spending-by-category", {
-          credentials: "include",
-        });
-        const weeklyRes = await fetch("/api/dashboard/weekly-goal", {
-          credentials: "include",
+        // Dohvati sve transakcije
+        const transactionsData = await api.transactions.getAll();
+        const allTransactions = transactionsData.content || [];
+
+        // Filtriraj samo EXPENSE transakcije za graf
+        const expenseTransactions = allTransactions.filter(
+          (t) => t.categoryType === "EXPENSE",
+        );
+
+        // Izračunaj potrošnju po kategorijama
+        const categoryMap = new Map();
+        expenseTransactions.forEach((t) => {
+          const categoryName = t.categoryName || "Ostalo";
+          const amount = parseFloat(t.amount);
+          categoryMap.set(
+            categoryName,
+            (categoryMap.get(categoryName) || 0) + amount,
+          );
         });
 
-        if (spendingRes.ok) {
-          setSpending(await spendingRes.json());
-        }
-        if (weeklyRes.ok) {
-          setWeeklyData(await weeklyRes.json());
-        }
+        // Pretvori u niz za graf
+        const spendingData = Array.from(categoryMap.entries()).map(
+          ([name, value]) => ({
+            name,
+            value: parseFloat(value.toFixed(2)),
+          }),
+        );
+        setSpending(spendingData);
+
+        // Izračunaj tjednu potrošnju (samo EXPENSE)
+        const now = new Date();
+        const weekStart = new Date(now);
+        weekStart.setDate(
+          now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1),
+        );
+        weekStart.setHours(0, 0, 0, 0);
+
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+
+        const weeklyExpenses = expenseTransactions.filter((t) => {
+          const tDate = new Date(t.transactionDate);
+          return tDate >= weekStart && tDate <= weekEnd;
+        });
+
+        const weeklySpent = weeklyExpenses.reduce(
+          (sum, t) => sum + parseFloat(t.amount),
+          0,
+        );
+        const weeklyGoal = 500; // Default cilj
+
+        setWeeklyData({
+          spent: weeklySpent,
+          goal: weeklyGoal,
+          remaining: weeklyGoal - weeklySpent,
+          percentage: (weeklySpent / weeklyGoal) * 100,
+        });
       } catch (err) {
         console.error("Greška pri učitavanju podataka", err);
       } finally {
@@ -60,10 +94,8 @@ export default function DashboardPage() {
     <div style={{ maxWidth: 1200, margin: "24px auto", padding: "0 12px" }}>
       <h2>Nadzorna ploča</h2>
       <p>
-        Ulogiran kao: <b>{user.username}</b> ({user.email}) — uloga:{" "}
-        <b>{user.role}</b>
+        Dobrodošli, <b>{user?.username ?? user?.email ?? "Korisniče"}</b>!
       </p>
-
       <div
         style={{
           display: "grid",
@@ -91,16 +123,27 @@ export default function DashboardPage() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, value }) => `${name}: ${value.toFixed(2)}`}
+                  label={({ name, value }) => `${name}: ${value.toFixed(2)} €`}
                   outerRadius={80}
                   dataKey="value"
                 />
                 <Tooltip
+                  formatter={(value) => [`${value.toFixed(2)} €`, "Iznos"]}
                   contentStyle={{
-                    background: "rgba(11, 18, 32, 0.9)",
-                    border: "1px solid rgba(255, 255, 255, 0.14)",
+                    background: "rgba(30, 30, 50, 0.98)",
+                    border: "2px solid rgba(124, 58, 237, 0.6)",
                     borderRadius: 8,
-                    color: "rgba(255, 255, 255, 0.92)",
+                    padding: "10px 12px",
+                    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.4)",
+                  }}
+                  labelStyle={{
+                    color: "rgba(255, 255, 255, 0.95)",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                  }}
+                  itemStyle={{
+                    color: "rgba(255, 255, 255, 0.85)",
+                    fontSize: "13px",
                   }}
                 />
               </PieChart>

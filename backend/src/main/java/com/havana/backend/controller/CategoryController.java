@@ -19,8 +19,8 @@ public class CategoryController {
 
     @PostMapping
     public ResponseEntity<?> createCategory(Authentication authentication, @RequestBody CreateCategoryRequest request) {
-        categoryService.createCatgeroy(request, (Integer) authentication.getPrincipal());
-        return ResponseEntity.ok().build();
+        Category category = categoryService.createCatgeroy(request, (Integer) authentication.getPrincipal());
+        return ResponseEntity.ok(category);
     }
 
     @GetMapping

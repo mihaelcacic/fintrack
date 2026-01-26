@@ -18,13 +18,13 @@ public class CategoryService {
     private final CategoryRepository categoryRepository;
     private final UserService userService;
 
-    public void createCatgeroy(CreateCategoryRequest request, Integer userId) {
+    public Category createCatgeroy(CreateCategoryRequest request, Integer userId) {
         Category category = new Category();
         category.setName(request.name());
         category.setType(request.type());
         category.setUser(userService.findById(userId));
 
-        categoryRepository.save(category);
+        return categoryRepository.save(category);
     }
 
     public List<Category> getCategoriesForUser(Integer userId) {

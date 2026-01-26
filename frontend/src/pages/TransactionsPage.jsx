@@ -6,10 +6,13 @@ import TransactionTable from "../features/transactions/TransactionTable";
 import TransactionFilters, {
   ALL,
 } from "../features/transactions/TransactionFilters";
+import * as api from "../services/api";
 
 export default function TransactionsPage() {
   const { user } = useAuth();
-  const [transactions, setTransactions] = useState([]);
+  const [allTransactions, setAllTransactions] = useState([]);
+  const [displayPage, setDisplayPage] = useState(0);
+  const [pageSize] = useState(10);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     search: "",
@@ -28,21 +31,19 @@ export default function TransactionsPage() {
       return;
     }
     try {
-      const res = await fetch("/api/transactions", {
-        credentials: "include",
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const formatted = data.map((t) => ({
-          id: t.id,
-          type: t.category?.type === "INCOME" ? "income" : "expense",
-          amount: +t.amount,
-          category: t.category?.name || "Ostalo",
-          date: t.transactionDate,
-          description: t.description || "",
-        }));
-        setTransactions(formatted);
-      }
+      // Dohvati sve transakcije sa velikim page size
+      const data = await api.transactions.getAll(0, 1000);
+      const formatted = data.content.map((t) => ({
+        id: t.id,
+        type: t.categoryType === "INCOME" ? "income" : "expense",
+        amount: +t.amount,
+        category: t.categoryName || "Ostalo",
+        categoryId: t.categoryId,
+        date: t.transactionDate,
+        description: t.description || "",
+      }));
+      setAllTransactions(formatted);
+      setDisplayPage(0);
     } catch (err) {
       console.error("Greška pri učitavanju transakcija", err);
     } finally {
@@ -57,21 +58,13 @@ export default function TransactionsPage() {
   const addTransaction = useCallback(
     async (tx) => {
       try {
-        const res = await fetch("/api/transactions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            categoryId: null,
-            amount: tx.amount,
-            transactionDate: tx.date,
-            description: tx.description,
-          }),
-        });
-
-        if (res.ok) {
-          fetchTransactions();
-        }
+        await api.transactions.create(
+          tx.categoryId,
+          tx.amount,
+          tx.transactionDate,
+          tx.description,
+        );
+        fetchTransactions();
       } catch (err) {
         console.error("Greška pri dodavanju transakcije", err);
       }
@@ -82,14 +75,8 @@ export default function TransactionsPage() {
   const deleteTransaction = useCallback(
     async (id) => {
       try {
-        const res = await fetch(`/api/transactions/${id}`, {
-          method: "DELETE",
-          credentials: "include",
-        });
-
-        if (res.ok) {
-          fetchTransactions();
-        }
+        await api.transactions.delete(id);
+        fetchTransactions();
       } catch (err) {
         console.error("Greška pri brisanju transakcije", err);
       }
@@ -100,22 +87,22 @@ export default function TransactionsPage() {
   const totals = useMemo(() => {
     let income = 0;
     let expense = 0;
-    transactions.forEach((t) => {
+    allTransactions.forEach((t) => {
       if (t.type === "income") income += t.amount;
       else expense += t.amount;
     });
     return { income, expense, saved: income - expense };
-  }, [transactions]);
+  }, [allTransactions]);
 
   const categories = useMemo(() => {
-    const set = new Set(transactions.map((t) => t.category));
+    const set = new Set(allTransactions.map((t) => t.category));
     return Array.from(set).sort();
-  }, [transactions]);
+  }, [allTransactions]);
 
   const filteredTransactions = useMemo(() => {
     const s = filters.search.trim().toLowerCase();
 
-    let filtered = transactions.filter((t) => {
+    let filtered = allTransactions.filter((t) => {
       if (s && !(t.description || "").toLowerCase().includes(s)) return false;
       if (filters.category !== ALL && t.category !== filters.category)
         return false;
@@ -145,7 +132,16 @@ export default function TransactionsPage() {
           return 0;
       }
     });
-  }, [transactions, filters]);
+  }, [allTransactions, filters]);
+
+  // Paginacija - prikaži samo transakcije za trenutnu stranicu
+  const paginatedTransactions = useMemo(() => {
+    const start = displayPage * pageSize;
+    const end = start + pageSize;
+    return filteredTransactions.slice(start, end);
+  }, [filteredTransactions, displayPage, pageSize]);
+
+  const totalPages = Math.ceil(filteredTransactions.length / pageSize);
 
   if (loading) return <div className="container">Učitavanje...</div>;
 
@@ -154,13 +150,6 @@ export default function TransactionsPage() {
       <div className="row" style={{ justifyContent: "space-between" }}>
         <div>
           <h2>Transakcije</h2>
-          <p className="muted" style={{ marginTop: 6 }}>
-            Korisnik: <b>{user?.username ?? user?.email ?? "—"}</b> (
-            {user?.email ?? "—"})
-          </p>
-          <p style={{ marginTop: 10 }}>
-            <Link to="/dashboard">← Natrag na nadzornu ploču</Link>
-          </p>
         </div>
 
         <div className="card" style={{ padding: 12, minWidth: 260 }}>
@@ -202,13 +191,40 @@ export default function TransactionsPage() {
           categories={categories}
         />
 
-        <div className="muted" style={{ marginTop: 10, fontSize: 13 }}>
-          Prikazano: <b>{filteredTransactions.length}</b> /{" "}
-          {transactions.length}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop: 16,
+            marginBottom: 16,
+          }}
+        >
+          <div className="muted" style={{ fontSize: 13 }}>
+            Stranica: <b>{displayPage + 1}</b> od{" "}
+            <b>{Math.max(1, totalPages)}</b> | Ukupno:{" "}
+            <b>{filteredTransactions.length}</b>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              className="btn-secondary"
+              onClick={() => setDisplayPage(Math.max(0, displayPage - 1))}
+              disabled={displayPage === 0}
+            >
+              ← Prethodna
+            </button>
+            <button
+              className="btn-secondary"
+              onClick={() => setDisplayPage(displayPage + 1)}
+              disabled={displayPage >= totalPages - 1}
+            >
+              Sljedeća →
+            </button>
+          </div>
         </div>
 
         <TransactionTable
-          transactions={filteredTransactions}
+          transactions={paginatedTransactions}
           onDelete={deleteTransaction}
         />
       </div>
