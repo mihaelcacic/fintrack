@@ -1,4 +1,5 @@
-:root {
+:root,
+[data-theme="dark"] {
   --bg: #0b1220;
   --panel: rgba(255, 255, 255, 0.06);
   --panel-2: rgba(255, 255, 255, 0.10);
@@ -13,9 +14,26 @@
   line-height: 1.5;
   font-weight: 400;
   color: var(--text);
-  background: radial-gradient(1200px 600px at 20% 0%, rgba(124, 58, 237, 0.25), transparent 60%),
-              radial-gradient(900px 500px at 80% 10%, rgba(34, 197, 94, 0.18), transparent 55%),
-              var(--bg);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+[data-theme="light"] {
+  --bg: #f8f9fa;
+  --panel: rgba(0, 0, 0, 0.04);
+  --panel-2: rgba(0, 0, 0, 0.08);
+  --text: rgba(0, 0, 0, 0.87);
+  --muted: rgba(0, 0, 0, 0.60);
+  --border: rgba(0, 0, 0, 0.12);
+  --accent: #7c3aed;
+  --accent-2: #22c55e;
+  --danger: #ef4444;
+
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--text);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -27,6 +45,15 @@ body {
   margin: 0;
   min-height: 100vh;
   display: block; /* makni centriranje iz template-a */
+  background: radial-gradient(1200px 600px at 20% 0%, rgba(124, 58, 237, 0.25), transparent 60%),
+              radial-gradient(900px 500px at 80% 10%, rgba(34, 197, 94, 0.18), transparent 55%),
+              var(--bg);
+}
+
+[data-theme="light"] body {
+  background: radial-gradient(1200px 600px at 20% 0%, rgba(124, 58, 237, 0.12), transparent 60%),
+              radial-gradient(900px 500px at 80% 10%, rgba(34, 197, 94, 0.08), transparent 55%),
+              var(--bg);
 }
 
 a {
@@ -129,13 +156,39 @@ button:active {
   background: linear-gradient(180deg, rgba(124, 58, 237, 1), rgba(124, 58, 237, 0.82));
 }
 
+[data-theme="light"] .btn-primary {
+  background: linear-gradient(180deg, #7c3aed, #6d28d9);
+  border-color: #6d28d9;
+  color: #ffffff;
+}
+[data-theme="light"] .btn-primary:hover {
+  background: linear-gradient(180deg, #8b5cf6, #7c3aed);
+}
+
 .btn-danger {
   background: rgba(239, 68, 68, 0.12);
   border-color: rgba(239, 68, 68, 0.35);
 }
 .btn-danger:hover {
-  background: rgba(239, 68, 68, 0.18);
+  background: rgba(239, 68, 68, 0.20);
 }
+
+.btn-theme {
+  background: transparent;
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+  color: var(--text);
+}
+.btn-theme:hover {
+  background: var(--panel);
+  border-color: var(--accent);
+}
+  background: rgba(239, 68, 68, 0.18);
+
 
 /* Tables */
 table {
@@ -182,6 +235,10 @@ tr:hover td {
   border-bottom: 1px solid var(--border);
   background: rgba(11, 18, 32, 0.75);
   backdrop-filter: blur(12px);
+}
+
+[data-theme="light"] .navbar {
+  background: rgba(248, 249, 250, 0.85);
 }
 
 .navbar-inner {
@@ -246,6 +303,12 @@ tr:hover td {
   background: rgba(124, 58, 237, 0.18);
   border-color: rgba(124, 58, 237, 0.45);
   color: #ffffff;
+}
+
+[data-theme="light"] .nav-link.active {
+  background: rgba(124, 58, 237, 0.25);
+  border-color: rgba(124, 58, 237, 0.50);
+  color: #111111;
 }
 
 /* FIX: Windows/Chrome select dropdown (opcije bijele na bijelo) */

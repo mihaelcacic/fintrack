@@ -1,8 +1,10 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 
 export default function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   if (!isAuthenticated) return null;
@@ -61,6 +63,13 @@ export default function Navbar() {
 
         <div className="nav-right">
           <span className="badge">{user.username}</span>
+          <button
+            className="btn-theme"
+            onClick={toggleTheme}
+            title="Promijeni temu"
+          >
+            {theme === "dark" ? "☀️" : "🌙"}
+          </button>
           <button className="btn-danger" onClick={onLogout}>
             Odjava
           </button>
