@@ -16,7 +16,7 @@ export default function Navbar() {
     <div className="navbar">
       <div className="navbar-inner">
         <div className="brand">
-          <span className="brand-dot" />
+          <img src="/logo.png" alt="FinTrack logo" className="brand-logo" />
           FinTrack
         </div>
 
