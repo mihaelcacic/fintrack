@@ -26,4 +26,6 @@ public interface CategoryRepository extends JpaRepository<Category, Integer> {
     """)
     List<Category> findForUser(@Param("userId") Integer userId);
 
+    Optional<Category> findByIdAndUserId(Integer id, Integer userId);
+
 }
