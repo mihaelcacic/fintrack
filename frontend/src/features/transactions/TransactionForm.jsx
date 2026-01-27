@@ -20,6 +20,8 @@ export default function TransactionForm({ onAdd, onCategoriesChange }) {
   const [showDeleteCategory, setShowDeleteCategory] = useState(false);
   const [searchDeleteCategory, setSearchDeleteCategory] = useState("");
   const [deletingCategoryId, setDeletingCategoryId] = useState(null);
+  const [deleteFilterType, setDeleteFilterType] = useState(null); // null = svi, "INCOME" = prihodi, "EXPENSE" = troškovi
+  const [deleteError, setDeleteError] = useState("");
 
   // Učitaj kategorije
   useEffect(() => {
@@ -92,6 +94,8 @@ export default function TransactionForm({ onAdd, onCategoriesChange }) {
       return;
     }
 
+    setDeleteError("");
+
     try {
       // Pozovi backend za brisanje
       await api.categories.delete(catId);
@@ -100,6 +104,7 @@ export default function TransactionForm({ onAdd, onCategoriesChange }) {
       setCategories(categories.filter((c) => c.id !== catId));
       setSearchDeleteCategory("");
       setErr("");
+      setDeleteError("");
 
       // Ako je obrisana kategorija bila odabrana, postavi novu
       if (categoryId === catId) {
@@ -111,7 +116,9 @@ export default function TransactionForm({ onAdd, onCategoriesChange }) {
         setCategoryId(newDefault?.id ?? null);
       }
     } catch (error) {
-      setErr("Greška pri brisanju kategorije");
+      // Prikaži specifičnu poruku greške sa backenda
+      const errorMessage = error.message || "Greška pri brisanju kategorije";
+      setDeleteError(errorMessage);
       console.error(error);
     }
   };
@@ -256,6 +263,81 @@ export default function TransactionForm({ onAdd, onCategoriesChange }) {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 style={{ marginTop: 0 }}>Obriši kategoriju</h3>
+            <p className="muted" style={{ fontSize: 12, marginTop: 0 }}>
+              Mogu se brisati samo vaše vlastite kategorije
+            </p>
+
+            {deleteError && (
+              <div
+                style={{
+                  padding: 12,
+                  background: "#ff4444",
+                  borderRadius: 4,
+                  marginBottom: 16,
+                }}
+              >
+                <p style={{ color: "white", margin: 0, fontSize: 13 }}>
+                  {deleteError}
+                </p>
+              </div>
+            )}
+
+            {/* Gumbi za filtriranje po tipu */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+              <button
+                onClick={() => setDeleteFilterType(null)}
+                style={{
+                  flex: 1,
+                  padding: "8px 12px",
+                  background:
+                    deleteFilterType === null ? "#7c3aed" : "var(--panel)",
+                  color: deleteFilterType === null ? "white" : "var(--text)",
+                  border: `1px solid ${deleteFilterType === null ? "#7c3aed" : "var(--border)"}`,
+                  borderRadius: 4,
+                  cursor: "pointer",
+                  fontSize: 12,
+                  fontWeight: deleteFilterType === null ? "600" : "normal",
+                }}
+              >
+                Sve
+              </button>
+              <button
+                onClick={() => setDeleteFilterType("INCOME")}
+                style={{
+                  flex: 1,
+                  padding: "8px 12px",
+                  background:
+                    deleteFilterType === "INCOME" ? "#22c55e" : "var(--panel)",
+                  color:
+                    deleteFilterType === "INCOME" ? "white" : "var(--text)",
+                  border: `1px solid ${deleteFilterType === "INCOME" ? "#22c55e" : "var(--border)"}`,
+                  borderRadius: 4,
+                  cursor: "pointer",
+                  fontSize: 12,
+                  fontWeight: deleteFilterType === "INCOME" ? "600" : "normal",
+                }}
+              >
+                Prihodi
+              </button>
+              <button
+                onClick={() => setDeleteFilterType("EXPENSE")}
+                style={{
+                  flex: 1,
+                  padding: "8px 12px",
+                  background:
+                    deleteFilterType === "EXPENSE" ? "#ef4444" : "var(--panel)",
+                  color:
+                    deleteFilterType === "EXPENSE" ? "white" : "var(--text)",
+                  border: `1px solid ${deleteFilterType === "EXPENSE" ? "#ef4444" : "var(--border)"}`,
+                  borderRadius: 4,
+                  cursor: "pointer",
+                  fontSize: 12,
+                  fontWeight: deleteFilterType === "EXPENSE" ? "600" : "normal",
+                }}
+              >
+                Troškovi
+              </button>
+            </div>
 
             <input
               type="text"
@@ -267,6 +349,10 @@ export default function TransactionForm({ onAdd, onCategoriesChange }) {
 
             <div style={{ flex: 1, overflowY: "auto", marginBottom: 16 }}>
               {categories
+                .filter(
+                  (cat) =>
+                    deleteFilterType === null || cat.type === deleteFilterType,
+                ) // Filter po tipu
                 .filter((cat) =>
                   cat.name
                     .toLowerCase()
@@ -307,11 +393,16 @@ export default function TransactionForm({ onAdd, onCategoriesChange }) {
                     </button>
                   </div>
                 ))}
-              {categories.filter((cat) =>
-                cat.name
-                  .toLowerCase()
-                  .includes(searchDeleteCategory.toLowerCase()),
-              ).length === 0 && (
+              {categories
+                .filter(
+                  (cat) =>
+                    deleteFilterType === null || cat.type === deleteFilterType,
+                )
+                .filter((cat) =>
+                  cat.name
+                    .toLowerCase()
+                    .includes(searchDeleteCategory.toLowerCase()),
+                ).length === 0 && (
                 <p className="muted" style={{ textAlign: "center" }}>
                   Nema kategorija koje odgovaraju pretrazi
                 </p>
@@ -320,7 +411,12 @@ export default function TransactionForm({ onAdd, onCategoriesChange }) {
 
             <button
               type="button"
-              onClick={() => setShowDeleteCategory(false)}
+              onClick={() => {
+                setShowDeleteCategory(false);
+                setDeleteFilterType(null);
+                setSearchDeleteCategory("");
+                setDeleteError("");
+              }}
               className="btn-secondary"
               style={{ width: "100%" }}
             >
