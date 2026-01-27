@@ -329,7 +329,7 @@ export default function SavingsPage() {
                   }}
                 >
                   <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>
-                    Месячна штедња:{" "}
+                    Mjesečna štednja:{" "}
                     <b style={{ fontSize: 14 }}>
                       {goal.monthlySavingsRequired} €
                     </b>
@@ -357,7 +357,7 @@ export default function SavingsPage() {
                     className="btn-primary"
                     style={{ flex: 1 }}
                   >
-                    + Dodaj štednju
+                    + Dodaj u štednju
                   </button>
                   {isGoalMet && (
                     <span

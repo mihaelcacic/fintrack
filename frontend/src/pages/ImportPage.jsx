@@ -9,46 +9,25 @@ export default function ImportPage() {
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
 
-  const handleDownloadTemplate = () => {
+  const handleDownloadTemplate = async () => {
     try {
-      // Naslovi kolona
-      const headers = [
-        "transaction_date",
-        "amount",
-        "description",
-        "category_name",
-        "category_type",
-      ];
+      setLoading(true);
+      const blob = await api.transactions.downloadTemplate();
 
-      // Primjer redaka
-      const exampleRows = [
-        ["2026-01-26", "50.00", "Konzum - namirnice", "Hrana", "EXPENSE"],
-        ["2026-01-25", "100.00", "Plaća", "Plaća", "INCOME"],
-        ["2026-01-24", "15.50", "Kino", "Zabava", "EXPENSE"],
-      ];
-
-      // Kreiraj worksheet sa naslovnim redom i primjerima
-      const data = [headers, ...exampleRows];
-      const ws = XLSX.utils.aoa_to_sheet(data);
-
-      // Postavi širinu kolona
-      ws["!cols"] = [
-        { wch: 15 }, // transaction_date
-        { wch: 12 }, // amount
-        { wch: 25 }, // description
-        { wch: 20 }, // category_name
-        { wch: 12 }, // category_type
-      ];
-
-      // Kreiraj workbook i dodaj sheet
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Transactions");
-
-      // Preuzmi XLSX datoteku
-      XLSX.writeFile(wb, "transaction-template.xlsx");
+      // Kreiraj URL za blob i preuzmi datoteku
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "transaction-template.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
     } catch (err) {
-      setError("Greška pri kreiranju template-a");
+      setError("Greška pri preuzimanju template-a");
       console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -174,10 +153,11 @@ export default function ImportPage() {
               </h3>
               <button
                 onClick={handleDownloadTemplate}
+                disabled={loading}
                 className="btn-primary"
                 style={{ width: "100%" }}
               >
-                📥 Preuzmi XLSX template
+                {loading ? "Preuzimam..." : "📥 Preuzmi XLSX template"}
               </button>
             </div>
 
