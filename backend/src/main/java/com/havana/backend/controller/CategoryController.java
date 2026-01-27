@@ -30,12 +30,12 @@ public class CategoryController {
 
     @DeleteMapping("/{categoryId}")
     public ResponseEntity<?> deleteCategory(
-            @PathVariable Integer Id,
+            @PathVariable Integer categoryId,
             Authentication authentication
     ) {
         Integer userId = (Integer) authentication.getPrincipal();
 
-        categoryService.deleteCategoryForUser(Id, userId);
+        categoryService.deleteCategoryForUser(categoryId, userId);
 
         return ResponseEntity.noContent().build();
     }
