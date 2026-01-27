@@ -133,7 +133,7 @@ public class TransactionController {
     }
 
     @GetMapping("/monthly-balance")
-    public ResponseEntity<?> getMonthlyBalance(Authentication authentication) {
+    public ResponseEntity<?> getMonthlyBalance(Authentication authentication) { // ovo kad budem imao front, popravi zbog payloada
 
         Integer userId = (Integer) authentication.getPrincipal();
 
@@ -141,4 +141,7 @@ public class TransactionController {
                 transactionService.getCurrentMonthBalance(userId)
         );
     }
+
+    //@GetMapping("/weekly-balance"){
+    //}
 }
