@@ -1,5 +1,6 @@
 package com.havana.backend.service;
 
+import com.havana.backend.data.CategoryResponse;
 import com.havana.backend.data.CreateCategoryRequest;
 import com.havana.backend.model.Category;
 import com.havana.backend.repository.CategoryRepository;
@@ -30,6 +31,17 @@ public class CategoryService {
 
     public List<Category> getCategoriesForUser(Integer userId) {
         return categoryRepository.findForUser(userId);
+    }
+
+    public List<CategoryResponse> getMyCustomCategories(Integer userId) {
+        return categoryRepository.findByUserId(userId)
+                .stream()
+                .map(c -> new CategoryResponse(
+                        c.getId(),
+                        c.getName(),
+                        c.getType()
+                ))
+                .toList();
     }
 
     public void deleteCategoryForUser(Integer categoryId, Integer userId) {

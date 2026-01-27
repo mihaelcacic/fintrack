@@ -2,6 +2,7 @@ package com.havana.backend.service;
 
 import com.havana.backend.data.AddTransactionRequest;
 import com.havana.backend.data.ImportResultResponse;
+import com.havana.backend.data.MonthlyBalanceRecord;
 import com.havana.backend.data.TransactionFilterRequest;
 import com.havana.backend.model.Category;
 import com.havana.backend.model.CategoryType;
@@ -270,5 +271,35 @@ public class TransactionService {
         }
 
         transactionRepository.delete(t);
+    }
+
+    // racunanje novaca na racunu za taj mjesec
+    public MonthlyBalanceRecord getCurrentMonthBalance(Integer userId) {
+
+        LocalDate now = LocalDate.now();
+        LocalDate startOfMonth = now.withDayOfMonth(1);
+        LocalDate endOfMonth = now;
+
+        List<Transaction> transactions =
+                transactionRepository.findForUserAndMonth(
+                        userId, startOfMonth, endOfMonth
+                );
+
+        BigDecimal income = BigDecimal.ZERO;
+        BigDecimal expense = BigDecimal.ZERO;
+
+        for (Transaction t : transactions) {
+            if ("INCOME".equals(t.getCategory().getType())) {
+                income = income.add(t.getAmount());
+            } else if ("EXPENSE".equals(t.getCategory().getType())) {
+                expense = expense.add(t.getAmount());
+            }
+        }
+
+        return new MonthlyBalanceRecord(
+                income,
+                expense,
+                income.subtract(expense)
+        );
     }
 }
