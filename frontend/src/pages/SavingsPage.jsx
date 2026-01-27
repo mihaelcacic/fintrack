@@ -270,7 +270,7 @@ export default function SavingsPage() {
                     }}
                   >
                     <p style={{ margin: 0, fontSize: 12, color: "#ff6b6b" }}>
-                      ⚠️ Rok je prošao! Mesečna štednja je preračunata na{" "}
+                      ⚠️ Rok je prošao! Mjesečna štednja je preračunata na{" "}
                       <b>{goal.monthlySavingsRequired} €</b> do kraja dostupnog
                       vremena.
                     </p>
