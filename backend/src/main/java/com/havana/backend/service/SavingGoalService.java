@@ -31,7 +31,7 @@ public class SavingGoalService {
                 .toList();
     }
 
-    public SavingGoal createSavingGoal(Integer userId, CreateSavingGoalRequest request) {
+    public SavingGoalResponse createSavingGoal(Integer userId, CreateSavingGoalRequest request) {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalStateException("Korisnik ne postoji"));
@@ -43,7 +43,8 @@ public class SavingGoalService {
         goal.setDeadline(request.deadline());
         goal.setCurrentAmount(BigDecimal.ZERO);
 
-        return savingGoalRepository.save(goal);
+        savingGoalRepository.save(goal);
+        return toResponse(goal);
     }
 
     public SavingGoalResponse addSavingAmount(
