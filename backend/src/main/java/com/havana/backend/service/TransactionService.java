@@ -113,9 +113,10 @@ public class TransactionService {
             );
         }
 
-        if (filter.categoryId() != null) {
+        // Promijenjeno iz categoryId u categoryName
+        if (filter.categoryName() != null && !filter.categoryName().isBlank()) {
             spec = spec.and(
-                    TransactionSpecification.categoryEquals(filter.categoryId())
+                    TransactionSpecification.categoryNameEquals(filter.categoryName())
             );
         }
 
@@ -125,18 +126,19 @@ public class TransactionService {
             );
         }
 
-        if (filter.amountFrom() != null && filter.amountTo() != null) {
+        if (filter.minAmount() != null && filter.maxAmount() != null) {
+            // Ispravljen redoslijed parametara
             spec = spec.and(
                     TransactionSpecification.amountBetween(
-                            filter.amountFrom(), filter.amountTo()
+                            filter.minAmount(), filter.maxAmount()
                     )
             );
         }
 
-        if (filter.dateFrom() != null && filter.dateTo() != null) {
+        if (filter.fromDate() != null && filter.toDate() != null) {
             spec = spec.and(
                     TransactionSpecification.dateBetween(
-                            filter.dateFrom(), filter.dateTo()
+                            filter.fromDate(), filter.toDate()
                     )
             );
         }
@@ -152,16 +154,24 @@ public class TransactionService {
 
     // sortiranje
     private Sort resolveSort(TransactionFilterRequest filter) {
-        if ("amount".equalsIgnoreCase(filter.sortBy())) {
-            return "asc".equalsIgnoreCase(filter.sortDir())
-                    ? Sort.by("amount").ascending()
-                    : Sort.by("amount").descending();
+        if (filter.sortBy() == null || filter.sortBy().isBlank()) {
+            // Default sort: najnovije transakcije prvo
+            return Sort.by("transactionDate").descending();
         }
 
-        // default: datum
-        return "asc".equalsIgnoreCase(filter.sortDir())
-                ? Sort.by("transactionDate").ascending()
-                : Sort.by("transactionDate").descending();
+        switch (filter.sortBy().toLowerCase()) {
+            case "amount_asc":
+                return Sort.by("amount").ascending();
+            case "amount_desc":
+                return Sort.by("amount").descending();
+            case "date_asc":
+                return Sort.by("transactionDate").ascending();
+            case "date_desc":
+                return Sort.by("transactionDate").descending();
+            default:
+                // Default fallback
+                return Sort.by("transactionDate").descending();
+        }
     }
 
     // metoda za importanje csva koji je nekoc bio excell tablica, tako se unose transakcije
