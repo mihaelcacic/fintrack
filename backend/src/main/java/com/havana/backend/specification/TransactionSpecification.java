@@ -23,28 +23,27 @@ public class TransactionSpecification {
                 );
     }
 
-    public static Specification<Transaction> categoryEquals(Integer categoryId) {
+    public static Specification<Transaction> categoryNameEquals(String categoryName) {
         return (root, query, cb) ->
-                cb.equal(root.get("category").get("id"), categoryId);
+                cb.equal(cb.lower(root.get("category").get("name")),
+                        categoryName.toLowerCase());
     }
 
     public static Specification<Transaction> categoryTypeEquals(String type) {
         return (root, query, cb) ->
                 cb.equal(root.get("category").get("type"), type);
     }
-
+    
     public static Specification<Transaction> amountBetween(
-            BigDecimal from, BigDecimal to) {
-
+            BigDecimal minAmount, BigDecimal maxAmount) {
         return (root, query, cb) ->
-                cb.between(root.get("amount"), from, to);
+                cb.between(root.get("amount"), minAmount, maxAmount);
     }
 
     public static Specification<Transaction> dateBetween(
-            LocalDate from, LocalDate to) {
-
+            LocalDate fromDate, LocalDate toDate) {
         return (root, query, cb) ->
-                cb.between(root.get("transactionDate"), from, to);
+                cb.between(root.get("transactionDate"), fromDate, toDate);
     }
 }
 
