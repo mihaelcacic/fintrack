@@ -28,7 +28,7 @@ public class CategoryController {
         return ResponseEntity.ok(categoryService.getCategoriesForUser((Integer) authentication.getPrincipal()));
     }
 
-    @DeleteMapping("/{Id}")
+    @DeleteMapping("/{categoryId}")
     public ResponseEntity<?> deleteCategory(
             @PathVariable Integer Id,
             Authentication authentication

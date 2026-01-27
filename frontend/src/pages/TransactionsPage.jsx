@@ -10,7 +10,8 @@ import * as api from "../services/api";
 
 export default function TransactionsPage() {
   const { user } = useAuth();
-  const [allTransactions, setAllTransactions] = useState([]);
+  const [paginatedTransactions, setPaginatedTransactions] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [displayPage, setDisplayPage] = useState(0);
   const [pageSize] = useState(10);
   const [loading, setLoading] = useState(true);
@@ -31,8 +32,25 @@ export default function TransactionsPage() {
       return;
     }
     try {
-      // Dohvati sve transakcije sa velikim page size
-      const data = await api.transactions.getAll(0, 1000);
+      // Gradi filter objekat za backend
+      const searchFilter = {
+        description: filters.search || null,
+        categoryName: filters.category !== ALL ? filters.category : null,
+        categoryType: filters.type !== ALL ? filters.type.toUpperCase() : null,
+        fromDate: filters.from || null,
+        toDate: filters.to || null,
+        minAmount: filters.minAmount ? Number(filters.minAmount) : null,
+        maxAmount: filters.maxAmount ? Number(filters.maxAmount) : null,
+        sortBy: filters.sort,
+      };
+
+      // Pozovi server-side search endpoint
+      const data = await api.transactions.search(
+        searchFilter,
+        displayPage,
+        pageSize,
+      );
+
       const formatted = data.content.map((t) => ({
         id: t.id,
         type: t.categoryType === "INCOME" ? "income" : "expense",
@@ -42,18 +60,20 @@ export default function TransactionsPage() {
         date: t.transactionDate,
         description: t.description || "",
       }));
-      setAllTransactions(formatted);
-      setDisplayPage(0);
+
+      setPaginatedTransactions(formatted);
+      setTotalCount(data.totalElements || 0);
     } catch (err) {
       console.error("Greška pri učitavanju transakcija", err);
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.id, displayPage, pageSize, filters]);
 
   useEffect(() => {
+    setLoading(true);
     fetchTransactions();
-  }, [user?.id, fetchTransactions]);
+  }, [fetchTransactions]);
 
   const addTransaction = useCallback(
     async (tx) => {
@@ -87,61 +107,19 @@ export default function TransactionsPage() {
   const totals = useMemo(() => {
     let income = 0;
     let expense = 0;
-    allTransactions.forEach((t) => {
+    paginatedTransactions.forEach((t) => {
       if (t.type === "income") income += t.amount;
       else expense += t.amount;
     });
     return { income, expense, saved: income - expense };
-  }, [allTransactions]);
+  }, [paginatedTransactions]);
 
   const categories = useMemo(() => {
-    const set = new Set(allTransactions.map((t) => t.category));
+    const set = new Set(paginatedTransactions.map((t) => t.category));
     return Array.from(set).sort();
-  }, [allTransactions]);
+  }, [paginatedTransactions]);
 
-  const filteredTransactions = useMemo(() => {
-    const s = filters.search.trim().toLowerCase();
-
-    let filtered = allTransactions.filter((t) => {
-      if (s && !(t.description || "").toLowerCase().includes(s)) return false;
-      if (filters.category !== ALL && t.category !== filters.category)
-        return false;
-      if (filters.type !== ALL && t.type !== filters.type) return false;
-      if (filters.from && t.date < filters.from) return false;
-      if (filters.to && t.date > filters.to) return false;
-
-      const min = filters.minAmount ? Number(filters.minAmount) : null;
-      const max = filters.maxAmount ? Number(filters.maxAmount) : null;
-      if (min !== null && t.amount < min) return false;
-      if (max !== null && t.amount > max) return false;
-
-      return true;
-    });
-
-    return filtered.sort((a, b) => {
-      switch (filters.sort) {
-        case "date_asc":
-          return a.date.localeCompare(b.date);
-        case "date_desc":
-          return b.date.localeCompare(a.date);
-        case "amount_asc":
-          return a.amount - b.amount;
-        case "amount_desc":
-          return b.amount - a.amount;
-        default:
-          return 0;
-      }
-    });
-  }, [allTransactions, filters]);
-
-  // Paginacija - prikaži samo transakcije za trenutnu stranicu
-  const paginatedTransactions = useMemo(() => {
-    const start = displayPage * pageSize;
-    const end = start + pageSize;
-    return filteredTransactions.slice(start, end);
-  }, [filteredTransactions, displayPage, pageSize]);
-
-  const totalPages = Math.ceil(filteredTransactions.length / pageSize);
+  const totalPages = Math.ceil(totalCount / pageSize);
 
   if (loading) return <div className="container">Učitavanje...</div>;
 
@@ -202,8 +180,7 @@ export default function TransactionsPage() {
         >
           <div className="muted" style={{ fontSize: 13 }}>
             Stranica: <b>{displayPage + 1}</b> od{" "}
-            <b>{Math.max(1, totalPages)}</b> | Ukupno:{" "}
-            <b>{filteredTransactions.length}</b>
+            <b>{Math.max(1, totalPages)}</b> | Ukupno: <b>{totalCount}</b>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button
