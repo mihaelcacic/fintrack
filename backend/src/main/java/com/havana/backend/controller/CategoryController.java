@@ -40,4 +40,14 @@ public class CategoryController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/my")
+    public ResponseEntity<?> getMyCategories(Authentication authentication) {
+
+        Integer userId = (Integer) authentication.getPrincipal();
+
+        return ResponseEntity.ok(
+                categoryService.getMyCustomCategories(userId)
+        );
+    }
+
 }

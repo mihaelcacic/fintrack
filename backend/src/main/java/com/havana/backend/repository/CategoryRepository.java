@@ -12,7 +12,7 @@ import java.util.Optional;
 
 public interface CategoryRepository extends JpaRepository<Category, Integer> {
 
-    List<Category> findByUser(User user);
+    List<Category> findByUserId(Integer userId );
 
     List<Category> findByUserAndType(User user, CategoryType type);
 
