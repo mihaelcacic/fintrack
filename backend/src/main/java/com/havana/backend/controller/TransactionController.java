@@ -131,4 +131,14 @@ public class TransactionController {
 
         return ResponseEntity.ok(result);
     }
+
+    @GetMapping("/monthly-balance")
+    public ResponseEntity<?> getMonthlyBalance(Authentication authentication) {
+
+        Integer userId = (Integer) authentication.getPrincipal();
+
+        return ResponseEntity.ok(
+                transactionService.getCurrentMonthBalance(userId)
+        );
+    }
 }

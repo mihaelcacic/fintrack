@@ -1,10 +1,12 @@
 package com.havana.backend.service;
 
 import com.havana.backend.data.CreateSavingGoalRequest;
+import com.havana.backend.data.MonthlyBalanceRecord;
 import com.havana.backend.data.SavingGoalResponse;
 import com.havana.backend.model.SavingGoal;
 import com.havana.backend.model.User;
 import com.havana.backend.repository.SavingGoalRepository;
+import com.havana.backend.repository.TransactionRepository;
 import com.havana.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,6 +19,7 @@ import java.util.List;
 public class SavingGoalService {
     private final SavingGoalRepository savingGoalRepository;
     private final UserRepository userRepository;
+    private final TransactionService transactionService;
 
     public List<SavingGoalResponse> getSavingGoals(Integer userId) {
         return savingGoalRepository.findByUserId(userId)
@@ -52,9 +55,30 @@ public class SavingGoalService {
             Integer userId,
             BigDecimal amount
     ) {
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Iznos mora biti veći od 0");
+        }
+
         SavingGoal goal = savingGoalRepository
                 .findByIdAndUserId(goalId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Cilj ne postoji"));
+
+        MonthlyBalanceRecord balance =
+                transactionService.getCurrentMonthBalance(userId);
+
+        BigDecimal available = balance.balance();
+
+        if (available.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalStateException(
+                    "Nemate raspoloživog novca za štednju"
+            );
+        }
+
+        if (amount.compareTo(available) > 0) {
+            throw new IllegalStateException(
+                    "Nemate dovoljno raspoloživog novca"
+            );
+        }
 
         goal.setCurrentAmount(
                 goal.getCurrentAmount().add(amount)
