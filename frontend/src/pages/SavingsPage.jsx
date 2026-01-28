@@ -7,6 +7,7 @@ export default function SavingsPage() {
   const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [monthlyBalance, setMonthlyBalance] = useState(null);
 
   // Form state
   const [showForm, setShowForm] = useState(false);
@@ -36,6 +37,20 @@ export default function SavingsPage() {
     };
 
     fetchGoals();
+  }, [user?.id]);
+
+  // Učitaj mjesečnu uštjedu
+  useEffect(() => {
+    const loadMonthlyBalance = async () => {
+      if (!user?.id) return;
+      try {
+        const data = await api.transactions.getMonthlyBalance();
+        setMonthlyBalance(data);
+      } catch (err) {
+        console.error("Greška pri učitavanju mjesečne uštede", err);
+      }
+    };
+    loadMonthlyBalance();
   }, [user?.id]);
 
   // Izračun postotka dovršenosti
@@ -116,11 +131,42 @@ export default function SavingsPage() {
 
   return (
     <div className="container">
-      <div style={{ marginBottom: 24 }}>
-        <h2>Ciljevi štednje</h2>
-        <p className="muted">
-          Postavi ciljeve štednje i prati svoj napredak prema željenom iznosu.
-        </p>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          marginBottom: 24,
+        }}
+      >
+        <div>
+          <h2>Ciljevi štednje</h2>
+          <p className="muted">
+            Postavi ciljeve štednje i prati svoj napredak prema željenom iznosu.
+          </p>
+        </div>
+
+        <div className="card" style={{ padding: 12, minWidth: 260 }}>
+          <div className="muted" style={{ fontSize: 13, marginBottom: 6 }}>
+            Mjesečna ušteda
+          </div>
+          <div style={{ display: "grid", gap: 6 }}>
+            {monthlyBalance !== null ? (
+              <div>
+                Ušteda ovog mjeseca:{" "}
+                <b>
+                  {(typeof monthlyBalance === "object"
+                    ? monthlyBalance.balance || monthlyBalance.saved || 0
+                    : monthlyBalance
+                  ).toFixed(2)}{" "}
+                  €
+                </b>
+              </div>
+            ) : (
+              <div className="muted">Učitavanje...</div>
+            )}
+          </div>
+        </div>
       </div>
 
       {error && (
