@@ -81,8 +81,24 @@ export default function DashboardPage() {
 
   if (loading) return <div style={{ padding: 24 }}>Učitavanje...</div>;
 
-  // Boje teme
-  const COLORS = ["#7c3aed", "#22c55e", "#06b6d4", "#f59e0b", "#ec4899"];
+  // Boje teme - proširena paleta
+  const COLORS = [
+    "#7c3aed", // Purple
+    "#22c55e", // Green
+    "#06b6d4", // Cyan
+    "#f59e0b", // Amber
+    "#ec4899", // Pink
+    "#8b5cf6", // Violet
+    "#10b981", // Emerald
+    "#14b8a6", // Teal
+    "#f97316", // Orange
+    "#d946ef", // Fuchsia
+    "#0ea5e9", // Sky
+    "#eab308", // Lime
+    "#ef4444", // Red
+    "#06b6d4", // Cyan (alt)
+    "#6366f1", // Indigo
+  ];
 
   // Dodaj boje svakom elementu u spending nizu
   const spendingWithColors = spending.map((item, index) => ({

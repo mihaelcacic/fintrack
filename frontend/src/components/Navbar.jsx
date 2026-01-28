@@ -52,6 +52,15 @@ export default function Navbar() {
           </NavLink>
 
           <NavLink
+            to="/analysis"
+            className={({ isActive }) =>
+              isActive ? "nav-link active" : "nav-link"
+            }
+          >
+            Analiza
+          </NavLink>
+
+          <NavLink
             to="/import"
             className={({ isActive }) =>
               isActive ? "nav-link active" : "nav-link"

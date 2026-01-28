@@ -8,6 +8,7 @@ import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
 import TransactionsPage from "./pages/TransactionsPage";
 import SavingsPage from "./pages/SavingsPage";
+import AnalysisPage from "./pages/AnalysisPage";
 import Navbar from "./components/Navbar";
 import ImportPage from "./pages/ImportPage";
 
@@ -27,6 +28,7 @@ export default function App() {
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/transactions" element={<TransactionsPage />} />
               <Route path="/savings" element={<SavingsPage />} />
+              <Route path="/analysis" element={<AnalysisPage />} />
               <Route path="/import" element={<ImportPage />} />
             </Route>
 

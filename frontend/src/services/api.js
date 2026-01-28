@@ -261,3 +261,75 @@ export const savings = {
     return res.ok;
   },
 };
+// =====================
+// ANALYSIS ENDPOINTS
+// =====================
+export const analysis = {
+  getMonthlySpending: async (months, categoryId = null) => {
+    const params = new URLSearchParams({ months });
+    if (categoryId) params.append("categoryId", categoryId);
+    
+    const res = await fetch(`${API_BASE}/analysis/monthly?${params}`, {
+      method: "GET",
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Greška pri učitavanju mjesečne analize");
+    return parseJSON(res);
+  },
+
+  getDailySpending: async (days, categoryId = null) => {
+    const params = new URLSearchParams({ days });
+    if (categoryId) params.append("categoryId", categoryId);
+    
+    const res = await fetch(`${API_BASE}/analysis/daily?${params}`, {
+      method: "GET",
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Greška pri učitavanju dnevne analize");
+    return parseJSON(res);
+  },
+};
+
+// =====================
+// PREDICTION ENDPOINTS
+// =====================
+export const prediction = {
+  predictDaily: async (date) => {
+    const res = await fetch(`${API_BASE}/predict/daily?date=${date}`, {
+      method: "GET",
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Greška pri predikciji dnevne potrošnje");
+    return parseJSON(res);
+  },
+
+  predictByCategory: async (categoryId, date) => {
+    const res = await fetch(
+      `${API_BASE}/predict?categoryId=${categoryId}&date=${date}`,
+      {
+        method: "GET",
+        credentials: "include",
+      }
+    );
+    if (!res.ok) throw new Error("Greška pri predikciji kategorije");
+    return parseJSON(res);
+  },
+
+  rollingAverage: async (months) => {
+    const res = await fetch(`${API_BASE}/predict/rolling-average?months=${months}`, {
+      method: "GET",
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Greška pri izračunavanju rolling average");
+    return parseJSON(res);
+  },
+
+  rollingSeries: async (window) => {
+    const res = await fetch(`${API_BASE}/predict/rolling-series?window=${window}`, {
+      method: "GET",
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Greška pri dohvaćanju rolling serije");
+    return parseJSON(res);
+  },
+};
