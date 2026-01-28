@@ -32,10 +32,21 @@ public class AuthController {
         }
 
         Integer userId = (Integer) authentication.getPrincipal();
+        User user = userService.findById(userId);
+        
+        // Create user response with role field
+        Map<String, Object> userResponse = Map.of(
+            "id", user.getId(),
+            "username", user.getUsername(),
+            "email", user.getEmail(),
+            "isAdmin", user.isAdmin(),
+            "role", user.isAdmin() ? "ROLE_ADMIN" : "ROLE_USER",
+            "createdAt", user.getCreatedAt()
+        );
 
         return ResponseEntity.ok(
                 Map.of(
-                        "user", userService.findById(userId),
+                        "user", userResponse,
                         "roles", authentication.getAuthorities()
                 )
         );
@@ -56,7 +67,18 @@ public class AuthController {
     public ResponseEntity<?> login(@RequestBody LoginRequest request, HttpServletRequest http) {
         User user = userService.login(request.email(), request.password());
         authenticate(user, http);
-        return ResponseEntity.ok(user);
+        
+        // Create user response with role field (same as /me endpoint)
+        Map<String, Object> userResponse = Map.of(
+            "id", user.getId(),
+            "username", user.getUsername(),
+            "email", user.getEmail(),
+            "isAdmin", user.isAdmin(),
+            "role", user.isAdmin() ? "ROLE_ADMIN" : "ROLE_USER",
+            "createdAt", user.getCreatedAt()
+        );
+        
+        return ResponseEntity.ok(userResponse);
     }
 
     @PostMapping("/logout")

@@ -53,8 +53,10 @@ public class TransactionService {
         
         Map<String, BigDecimal> categorySpending = new HashMap<>();
         for (Transaction t : transactions) {
-            String categoryName = t.getCategory() != null ? t.getCategory().getName() : "Ostalo";
-            categorySpending.put(categoryName, categorySpending.getOrDefault(categoryName, BigDecimal.ZERO).add(t.getAmount()));
+            if(t.getCategory().getType().equals(EXPENSE)) {
+                String categoryName = t.getCategory() != null ? t.getCategory().getName() : "Ostalo";
+                categorySpending.put(categoryName, categorySpending.getOrDefault(categoryName, BigDecimal.ZERO).add(t.getAmount()));
+            }
         }
         
         List<Map<String, Object>> result = new ArrayList<>();
