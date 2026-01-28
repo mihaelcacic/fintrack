@@ -23,51 +23,66 @@ export default function Navbar() {
         </div>
 
         <div className="nav-links">
-          <NavLink
-            to="/dashboard"
-            end
-            className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }
-          >
-            Nadzorna ploča
-          </NavLink>
+          {user && user.role === "ROLE_ADMIN" ? (
+            // Admin users see only Admin page
+            <NavLink
+              to="/admin"
+              className={({ isActive }) =>
+                isActive ? "nav-link active" : "nav-link"
+              }
+            >
+              Admin
+            </NavLink>
+          ) : (
+            // Regular users see all other pages
+            <>
+              <NavLink
+                to="/dashboard"
+                end
+                className={({ isActive }) =>
+                  isActive ? "nav-link active" : "nav-link"
+                }
+              >
+                Nadzorna ploča
+              </NavLink>
 
-          <NavLink
-            to="/transactions"
-            className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }
-          >
-            Transakcije
-          </NavLink>
+              <NavLink
+                to="/transactions"
+                className={({ isActive }) =>
+                  isActive ? "nav-link active" : "nav-link"
+                }
+              >
+                Transakcije
+              </NavLink>
 
-          <NavLink
-            to="/savings"
-            className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }
-          >
-            Štednja
-          </NavLink>
+              <NavLink
+                to="/savings"
+                className={({ isActive }) =>
+                  isActive ? "nav-link active" : "nav-link"
+                }
+              >
+                Štednja
+              </NavLink>
 
-          <NavLink
-            to="/analysis"
-            className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }
-          >
-            Analiza
-          </NavLink>
+              <NavLink
+                to="/analysis"
+                className={({ isActive }) =>
+                  isActive ? "nav-link active" : "nav-link"
+                }
+              >
+                Analiza
+              </NavLink>
 
-          <NavLink
-            to="/import"
-            className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }
-          >
-            Uvoz CSV
-          </NavLink>
+              <NavLink
+                to="/import"
+                className={({ isActive }) =>
+                  isActive ? "nav-link active" : "nav-link"
+                }
+              >
+                Uvoz CSV
+              </NavLink>
+            </>
+          )}
         </div>
 
         <div className="nav-right">

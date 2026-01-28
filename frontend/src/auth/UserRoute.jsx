@@ -1,7 +1,8 @@
+import { useContext } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 
-export default function AdminRoute() {
+const UserRoute = () => {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -12,10 +13,17 @@ export default function AdminRoute() {
     );
   }
 
-  // Check if user exists and has admin role
-  if (!user || user.role !== "ROLE_ADMIN") {
-    return <Navigate to="/dashboard" replace />;
+  // If user is admin, redirect to admin page
+  if (user && user.role === "ROLE_ADMIN") {
+    return <Navigate to="/admin" replace />;
+  }
+
+  // Check if user exists and has regular user role
+  if (!user || user.role !== "ROLE_USER") {
+    return <Navigate to="/login" replace />;
   }
 
   return <Outlet />;
-}
+};
+
+export default UserRoute;
