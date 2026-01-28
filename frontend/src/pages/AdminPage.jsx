@@ -55,7 +55,6 @@ const AdminPage = () => {
             margin: "0 auto",
           }}
         >
-          <div style={{ fontSize: "4rem", marginBottom: "16px" }}>🚫</div>
           <h2 style={{ marginBottom: "16px" }}>Pristup odbačen</h2>
           <p className="muted">
             Admin privilegije su potrebne za pristup ovoj stranici.
@@ -241,6 +240,24 @@ const AdminPage = () => {
 
   return (
     <div className="container">
+      <img
+        src="/amongus.png"
+        alt="Among Us"
+        onError={(e) => {
+          e.currentTarget.style.display = "none";
+        }}
+        style={{
+          position: "fixed",
+          top: 12,
+          left: 12,
+          width: 48,
+          height: 48,
+          opacity: 0.2,
+          pointerEvents: "none",
+          userSelect: "none",
+          borderRadius: 8,
+        }}
+      />
       <div style={{ marginBottom: 32 }}>
         <h2
           style={{
@@ -252,7 +269,6 @@ const AdminPage = () => {
             letterSpacing: "-0.02em",
           }}
         >
-          <span style={{ fontSize: "2rem" }}>👑</span>
           Admin Panel
         </h2>
         <p className="muted" style={{ fontSize: "1rem" }}>
@@ -274,7 +290,6 @@ const AdminPage = () => {
             gap: "12px",
           }}
         >
-          <span style={{ fontSize: "1.5rem" }}>❌</span>
           <div>
             <h4 style={{ margin: 0, fontWeight: 600 }}>Greška</h4>
             <p style={{ margin: 0 }}>{error}</p>
@@ -295,7 +310,6 @@ const AdminPage = () => {
             gap: "12px",
           }}
         >
-          <span style={{ fontSize: "1.5rem" }}>✅</span>
           <div>
             <h4 style={{ margin: 0, fontWeight: 600 }}>Uspjeh</h4>
             <p style={{ margin: 0 }}>{success}</p>
@@ -320,7 +334,6 @@ const AdminPage = () => {
             gap: "8px",
           }}
         >
-          <span>👤</span>
           {showCreateUser ? "Odustani" : "Dodaj korisnika"}
         </button>
         <button
@@ -338,7 +351,6 @@ const AdminPage = () => {
             gap: "8px",
           }}
         >
-          <span>👑</span>
           {showCreateAdmin ? "Odustani" : "Dodaj admina"}
         </button>
         <button
@@ -349,7 +361,6 @@ const AdminPage = () => {
             gap: "8px",
           }}
         >
-          <span>🔄</span>
           Osvježi
         </button>
       </div>
@@ -460,7 +471,6 @@ const AdminPage = () => {
                     </>
                   ) : (
                     <>
-                      <span>➕</span>
                       Stvori korisnika
                     </>
                   )}
@@ -482,7 +492,6 @@ const AdminPage = () => {
                 fontSize: "18px",
               }}
             >
-              <span>👑</span>
               Dodaj novog admina
             </h3>
             <form
@@ -574,7 +583,6 @@ const AdminPage = () => {
                     </>
                   ) : (
                     <>
-                      <span>➕</span>
                       Stvori admina
                     </>
                   )}
@@ -599,7 +607,6 @@ const AdminPage = () => {
                 fontSize: "18px",
               }}
             >
-              <span>✏️</span>
               Uredi korisnika: {editingUser.username}
             </h3>
             <form onSubmit={handleUpdateUser}>
@@ -713,7 +720,6 @@ const AdminPage = () => {
                         transition: "all 0.2s ease",
                       }}
                     >
-                      <span>👑</span>
                       <span>Admin</span>
                     </div>
                   </label>
@@ -756,7 +762,6 @@ const AdminPage = () => {
                     </>
                   ) : (
                     <>
-                      <span>💾</span>
                       Spremi promjene
                     </>
                   )}
@@ -773,7 +778,6 @@ const AdminPage = () => {
                     gap: "8px",
                   }}
                 >
-                  <span>❌</span>
                   Odustani
                 </button>
               </div>
@@ -935,9 +939,7 @@ const AdminPage = () => {
                     </td>
                     <td style={{ padding: "12px 16px" }}>
                       <div className="row" style={{ gap: "8px" }}>
-                        <span>
-                          {userData.role === "ROLE_ADMIN" ? "👑" : "👤"}
-                        </span>
+                        <span>{userData.role === "ROLE_ADMIN" ? "Admin" : "Korisnik"}</span>
                         <span
                           style={{
                             fontSize: "14px",
@@ -1025,39 +1027,45 @@ const AdminPage = () => {
                           onClick={() => startEdit(userData)}
                           disabled={processingUser === userData.id}
                           style={{
-                            background: "transparent",
-                            border: "none",
-                            color: "var(--accent)",
+                            background: "var(--accent)",
+                            color: "white",
+                            border: "1px solid transparent",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            padding: "8px 12px",
+                            borderRadius: "10px",
                             cursor:
                               processingUser === userData.id
                                 ? "not-allowed"
                                 : "pointer",
+                            opacity: processingUser === userData.id ? 0.6 : 1,
                             fontSize: "12px",
                             fontWeight: 500,
-                            textDecoration: "underline",
-                            opacity: processingUser === userData.id ? 0.5 : 1,
-                            padding: "4px 0",
                           }}
                         >
-                          ✏️ Uredi
+                          Uredi
                         </button>
                         {userData.id !== user.id && (
                           <button
                             onClick={() => handleDeleteUser(userData.id)}
                             disabled={processingUser === userData.id}
                             style={{
-                              background: "transparent",
-                              border: "none",
-                              color: "var(--danger)",
+                              background: "var(--danger)",
+                              color: "white",
+                              border: "1px solid transparent",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                              padding: "8px 12px",
+                              borderRadius: "10px",
                               cursor:
                                 processingUser === userData.id
                                   ? "not-allowed"
                                   : "pointer",
+                              opacity: processingUser === userData.id ? 0.6 : 1,
                               fontSize: "12px",
                               fontWeight: 500,
-                              textDecoration: "underline",
-                              opacity: processingUser === userData.id ? 0.5 : 1,
-                              padding: "4px 0",
                             }}
                           >
                             {processingUser === userData.id ? (
@@ -1066,14 +1074,14 @@ const AdminPage = () => {
                                   width: "12px",
                                   height: "12px",
                                   border: "2px solid transparent",
-                                  borderTop: "2px solid var(--danger)",
+                                  borderTop: "2px solid white",
                                   borderRadius: "50%",
                                   animation: "spin 1s linear infinite",
                                   display: "inline-block",
                                 }}
                               ></div>
                             ) : (
-                              <>🗑️ Obriši</>
+                              <>Obriši</>
                             )}
                           </button>
                         )}
