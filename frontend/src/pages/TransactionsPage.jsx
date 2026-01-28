@@ -77,6 +77,19 @@ export default function TransactionsPage() {
     }
   }, [user?.id, displayPage, pageSize, filters]);
 
+  // Resetuj stranicu kada se filter promijeni
+  useEffect(() => {
+    setDisplayPage(0);
+  }, [
+    filters.search,
+    filters.category,
+    filters.type,
+    filters.from,
+    filters.to,
+    filters.minAmount,
+    filters.maxAmount,
+  ]);
+
   useEffect(() => {
     // Debounce za search - bez postavljanja loading na true
     const timer = setTimeout(() => {
@@ -127,6 +140,10 @@ export default function TransactionsPage() {
         );
         setDisplayPage(0);
         fetchTransactions();
+
+        // Osvježi mjesečnu uštedu
+        const data = await api.transactions.getMonthlyBalance();
+        setMonthlyBalance(data);
       } catch (err) {
         console.error("Greška pri dodavanju transakcije", err);
       }
@@ -138,7 +155,6 @@ export default function TransactionsPage() {
     async (id) => {
       try {
         await api.transactions.delete(id);
-        setDisplayPage(0);
         fetchTransactions();
       } catch (err) {
         console.error("Greška pri brisanju transakcije", err);

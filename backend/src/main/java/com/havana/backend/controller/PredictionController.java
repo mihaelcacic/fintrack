@@ -103,4 +103,21 @@ public class PredictionController {
         Map<String, Double> series = predictionService.rollingMonthlySeries(userId, window);
         return ResponseEntity.ok(series);
     }
+
+    // Analysis endpoint: returns model diagnostics and backtest for daily spending
+    @GetMapping("/analyze-daily")
+    public ResponseEntity<Object> analyzeDaily(
+            @RequestParam(required = false) Integer userId,
+            Authentication authentication
+    ) {
+        Integer uid = (userId != null) ? userId : (Integer) authentication.getPrincipal();
+        if (uid == null) return ResponseEntity.status(401).body(Map.of("error", "unauthenticated"));
+
+        var dto = predictionService.analyzeDailySpending(uid);
+        if (dto == null) {
+            return ResponseEntity.ok(Map.of("message", "not enough data to build model"));
+        }
+        return ResponseEntity.ok(dto);
+    }
+
 }

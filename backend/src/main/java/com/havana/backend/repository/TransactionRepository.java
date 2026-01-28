@@ -61,4 +61,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Intege
           AND c.type = 'EXPENSE'
     """)
     BigDecimal sumExpense(Integer userId);
+
+    // Added: find transactions across all users by category id (useful for global averages)
+    List<Transaction> findByCategoryId(Integer categoryId);
 }

@@ -48,16 +48,17 @@ export default function SavingsPage() {
   }, [user?.id]);
 
   // Učitaj mjesečnu uštjedu
+  const loadMonthlyBalance = async () => {
+    if (!user?.id) return;
+    try {
+      const data = await api.transactions.getMonthlyBalance();
+      setMonthlyBalance(data);
+    } catch (err) {
+      console.error("Greška pri učitavanju mjesečne uštede", err);
+    }
+  };
+
   useEffect(() => {
-    const loadMonthlyBalance = async () => {
-      if (!user?.id) return;
-      try {
-        const data = await api.transactions.getMonthlyBalance();
-        setMonthlyBalance(data);
-      } catch (err) {
-        console.error("Greška pri učitavanju mjesečne uštede", err);
-      }
-    };
     loadMonthlyBalance();
   }, [user?.id]);
 
@@ -143,6 +144,8 @@ export default function SavingsPage() {
       );
       setGoals(goals.map((g) => (g.id === savingsModal.goalId ? updated : g)));
       handleCloseSavingsModal();
+      // Osvježi mjesečnu uštjedu
+      await loadMonthlyBalance();
     } catch (err) {
       setSavingsModal({
         ...savingsModal,

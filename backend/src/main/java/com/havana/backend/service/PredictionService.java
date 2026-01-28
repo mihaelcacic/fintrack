@@ -1,12 +1,13 @@
 // java
 package com.havana.backend.service;
 
+import com.havana.backend.model.Category;
 import com.havana.backend.model.Transaction;
 import com.havana.backend.model.User;
+import com.havana.backend.model.CategoryType;
+import com.havana.backend.repository.CategoryRepository;
 import com.havana.backend.repository.TransactionRepository;
 import com.havana.backend.repository.UserRepository;
-import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.math3.stat.regression.OLSMultipleLinearRegression;
 import org.apache.commons.math3.linear.SingularMatrixException;
@@ -23,9 +24,17 @@ public class PredictionService {
 
     private final TransactionRepository transactionRepository;
     private final UserRepository userRepository;
+    private final CategoryRepository categoryRepository;
 
     private static final int DAY_DUMMY_COUNT = 6; // days 1..6 as dummies, day 7 reference
     private static final int MONTH_DUMMY_COUNT = 11; // months 1..11 as dummies, month 12 reference
+
+    // Helper: consider a transaction as expense if it has no category (uncategorized) OR category.type == EXPENSE
+    private static boolean isExpenseOrUncategorized(Transaction t) {
+        if (t == null) return false;
+        if (t.getCategory() == null) return true; // treat uncategorized as expense for prediction purposes
+        return t.getCategory().getType() == CategoryType.EXPENSE;
+    }
 
     public double predict(Integer userId, LocalDate futureDate, Integer futureCategoryId) {
         User user = userRepository.findById(userId)
@@ -34,17 +43,69 @@ public class PredictionService {
         List<Transaction> rawTransactions = transactionRepository.findByUser(user);
         if (rawTransactions == null || rawTransactions.isEmpty()) return 0.0;
 
-        // filter out rows missing required fields
+        // If user requested prediction for a specific category that the user hasn't used,
+        // try to give a reasonable fallback: 0 for INCOME categories, otherwise global category average
+        if (futureCategoryId != null) {
+            Optional<Category> optCat = categoryRepository.findById(futureCategoryId);
+            if (optCat.isEmpty()) {
+                // unknown category id -> cannot predict
+                return 0.0;
+            }
+            Category cat = optCat.get();
+            if (cat.getType() == CategoryType.INCOME) {
+                // we don't predict income as expense
+                return 0.0;
+            }
+
+            // check if user has any expense transactions in this category
+            boolean userHasCat = rawTransactions.stream()
+                    .anyMatch(t -> t.getCategory() != null
+                            && Objects.equals(t.getCategory().getId(), futureCategoryId)
+                            && isExpenseOrUncategorized(t));
+
+            if (!userHasCat) {
+                // Try global avg for this category across all users (only expenses included)
+                List<Transaction> catTx = transactionRepository.findByCategoryId(futureCategoryId);
+                if (catTx != null && !catTx.isEmpty()) {
+                    double sum = 0.0;
+                    int cnt = 0;
+                    for (Transaction t : catTx) {
+                        if (!isExpenseOrUncategorized(t)) continue;
+                        if (t.getAmount() == null) continue;
+                        sum += t.getAmount().doubleValue();
+                        cnt++;
+                    }
+                    if (cnt > 0) {
+                        return Math.max(sum / cnt, 0.0);
+                    }
+                }
+
+                // Last fallback: user's overall expense average
+                double userSum = 0.0;
+                int userCnt = 0;
+                for (Transaction t : rawTransactions) {
+                    if (!isExpenseOrUncategorized(t)) continue;
+                    if (t.getAmount() == null) continue;
+                    userSum += t.getAmount().doubleValue();
+                    userCnt++;
+                }
+                if (userCnt > 0) return Math.max(userSum / userCnt, 0.0);
+
+                return 0.0;
+            }
+        }
+
+        // filter out rows missing required fields and ignore income categories
         List<Transaction> transactions = rawTransactions.stream()
-                .filter(t -> t.getTransactionDate() != null && t.getAmount() != null)
-                .collect(Collectors.toList());
+                .filter(t -> t.getTransactionDate() != null && t.getAmount() != null && isExpenseOrUncategorized(t))
+                .toList();
         if (transactions.isEmpty()) return 0.0;
 
         // build category -> column index map (one-hot)
         // Choose a reference category (most frequent) and exclude it from dummies
         LinkedHashMap<Integer, Integer> catIndex = new LinkedHashMap<>();
         Integer referenceCategory = null;
-        // count category frequencies (including global categories where user is null)
+        // count category frequencies (including global categories where user is null); exclude null categories
         Map<Integer, Long> freq = transactions.stream()
                 .map(t -> (t.getCategory() != null) ? t.getCategory().getId() : null)
                 .filter(Objects::nonNull)
@@ -113,6 +174,7 @@ public class PredictionService {
 
             int base = DAY_DUMMY_COUNT + MONTH_DUMMY_COUNT;
             // If future category is the reference or unseen, leave category features all zero (reference)
+            // Additionally, only set category feature if that category is an expense (or uncategorized doesn't have an id)
             if (futureCategoryId != null && !Objects.equals(futureCategoryId, referenceCategory) && catIndex.containsKey(futureCategoryId)) {
                 int idx = catIndex.get(futureCategoryId);
                 newFeatures[base + idx] = 1.0;
@@ -136,25 +198,34 @@ public class PredictionService {
     }
 
     private double fallbackAverage(List<Transaction> transactions, Integer categoryId) {
+        if (transactions == null || transactions.isEmpty()) return 0.0;
+
+        // consider only expense or uncategorized transactions for fallback
+        List<Transaction> filtered = transactions.stream()
+                .filter(PredictionService::isExpenseOrUncategorized)
+                .toList();
+
         double sum = 0;
         int count = 0;
         if (categoryId != null) {
-            for (Transaction t : transactions) {
+            for (Transaction t : filtered) {
                 if (t.getCategory() != null && t.getCategory().getId() != null
                         && t.getCategory().getId().equals(categoryId)) {
                     sum += t.getAmount().doubleValue();
                     count++;
                 }
             }
-        }
-        if (count == 0) {
-            for (Transaction t : transactions) {
+            // if requested category exists but it's income (or no matching expense), return 0
+            if (count == 0) return 0.0;
+        } else {
+            for (Transaction t : filtered) {
                 if (t.getAmount() != null) {
                     sum += t.getAmount().doubleValue();
                     count++;
                 }
             }
         }
+
         if (count == 0) return 0.0;
         return Math.max(sum / count, 0.0);
     }
@@ -168,12 +239,12 @@ public class PredictionService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         // Preporuka: Ovdje bi idealno trebalo filtrirati npr. zadnjih godinu dana
-        List<Transaction> transactions = transactionRepository.findByUser(user);
-        if (transactions.isEmpty()) return 0.0;
+        List<Transaction> all = transactionRepository.findByUser(user);
+        if (all == null || all.isEmpty()) return 0.0;
 
-        // 1. Grupiranje po točnom datumu (npr. 2023-10-01 -> 50.0 EUR)
-        Map<LocalDate, Double> dailySums = transactions.stream()
-                .filter(t -> t.getTransactionDate() != null && t.getAmount() != null)
+        // 1. Grupiranje po točnom datumu (npr. 2023-10-01 -> 50.0 EUR), only expenses/uncategorized
+        Map<LocalDate, Double> dailySums = all.stream()
+                .filter(t -> t.getTransactionDate() != null && t.getAmount() != null && isExpenseOrUncategorized(t))
                 .collect(Collectors.groupingBy(
                         Transaction::getTransactionDate,
                         Collectors.summingDouble(t -> t.getAmount().doubleValue())
@@ -209,7 +280,7 @@ public class PredictionService {
             int futureDow = futureDate.getDayOfWeek().getValue();
 
             // Dodaj koeficijent za odgovarajući dan
-            if (futureDow <= DAY_DUMMY_COUNT) {
+            if (futureDow <= DAY_DUMMY_COUNT && futureDow < beta.length) {
                 predicted += beta[futureDow];
             }
 
@@ -223,10 +294,12 @@ public class PredictionService {
     private double predictDailyFromTransactions(List<Transaction> transactions, LocalDate futureDate) {
         if (transactions == null || transactions.isEmpty()) return 0.0;
 
+        // consider only expense or uncategorized transactions
         int targetDow = futureDate.getDayOfWeek().getValue();
         double sum = 0.0;
         int count = 0;
         for (Transaction t : transactions) {
+            if (!isExpenseOrUncategorized(t)) continue;
             if (t.getTransactionDate() != null &&
                     t.getTransactionDate().getDayOfWeek().getValue() == targetDow) {
                 sum += t.getAmount().doubleValue();
@@ -239,8 +312,16 @@ public class PredictionService {
         }
 
         double total = 0.0;
-        for (Transaction t : transactions) total += t.getAmount().doubleValue();
-        return Math.max(total / transactions.size(), 0.0);
+        int totalCount = 0;
+        for (Transaction t : transactions) {
+            if (!isExpenseOrUncategorized(t)) continue;
+            if (t.getAmount() != null) {
+                total += t.getAmount().doubleValue();
+                totalCount++;
+            }
+        }
+        if (totalCount == 0) return 0.0;
+        return Math.max(total / totalCount, 0.0);
     }
 
     public double rollingMonthlyAverage(Integer userId, int months) {
@@ -259,6 +340,7 @@ public class PredictionService {
 
         double sum = 0.0;
         for (Transaction t : transactions) {
+            if (!isExpenseOrUncategorized(t)) continue;
             if (t.getAmount() != null) sum += t.getAmount().doubleValue();
         }
 
@@ -280,7 +362,7 @@ public class PredictionService {
         YearMonth maxDate = YearMonth.now();
 
         for (Transaction t : transactions) {
-            if (t.getTransactionDate() != null && t.getAmount() != null) {
+            if (t.getTransactionDate() != null && t.getAmount() != null && isExpenseOrUncategorized(t)) {
                 YearMonth ym = YearMonth.from(t.getTransactionDate());
                 actualData.merge(ym, t.getAmount().doubleValue(), Double::sum);
                 if (ym.isBefore(minDate)) minDate = ym;
@@ -323,7 +405,7 @@ public class PredictionService {
 
         // 1. Agregacija po danima (kao što smo prije dogovorili)
         Map<LocalDate, Double> dailySums = transactions.stream()
-                .filter(t -> t.getTransactionDate() != null && t.getAmount() != null)
+                .filter(t -> t.getTransactionDate() != null && t.getAmount() != null && isExpenseOrUncategorized(t))
                 .collect(Collectors.groupingBy(
                         Transaction::getTransactionDate,
                         Collectors.summingDouble(t -> t.getAmount().doubleValue())
