@@ -4,7 +4,7 @@ const API_BASE = "/api";
 const parseJSON = async (res) => {
   const contentType = res.headers.get("content-type");
   if (!contentType || !contentType.includes("application/json")) {
-    throw new Error("Server nije dostupan ili je grešna konfiguracija");
+    throw new Error("Backend se još nije učitao! Pokušajte ponovno.");
   }
   return res.json();
 };
@@ -220,7 +220,7 @@ export const savings = {
       method: "GET",
       credentials: "include",
     });
-    if (!res.ok) throw new Error("Failed to fetch savings goals");
+    if (!res.ok) throw new Error("Neuspješno dohvaćanje ciljeva ušteđevine");
     return parseJSON(res);
   },
 
@@ -233,7 +233,7 @@ export const savings = {
     });
     if (!res.ok) {
       const data = await parseJSON(res);
-      throw new Error(data.message || "Failed to create savings goal");
+      throw new Error(data.message || "Neuspješno kreiranje cilja ušteđevine");
     }
     return parseJSON(res);
   },
@@ -247,7 +247,7 @@ export const savings = {
     });
     if (!res.ok) {
       const data = await parseJSON(res);
-      throw new Error(data.message || "Failed to add savings");
+      throw new Error(data.message || "Neuspješno dodavanje ušteđevine");
     }
     return parseJSON(res);
   },
@@ -257,7 +257,7 @@ export const savings = {
       method: "DELETE",
       credentials: "include",
     });
-    if (!res.ok) throw new Error("Failed to delete savings goal");
+    if (!res.ok) throw new Error("Neuspješno brisanje cilja ušteđevine");
     return res.ok;
   },
 };

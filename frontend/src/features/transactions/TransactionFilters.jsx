@@ -85,14 +85,30 @@ export default function TransactionFilters({ filters, onChange, categories }) {
             <input
               type="date"
               value={filters.from}
-              onChange={(e) => onChange({ ...filters, from: e.target.value })}
+              onChange={(e) => {
+                const fromDate = e.target.value;
+                // Ako je from datum後 nakon to datuma, pobrij to datum
+                if (filters.to && fromDate > filters.to) {
+                  onChange({ ...filters, from: fromDate, to: "" });
+                } else {
+                  onChange({ ...filters, from: fromDate });
+                }
+              }}
               aria-label="Datum od"
             />
             <div className="date-sep">—</div>
             <input
               type="date"
               value={filters.to}
-              onChange={(e) => onChange({ ...filters, to: e.target.value })}
+              onChange={(e) => {
+                const toDate = e.target.value;
+                // Ako je to datum prije od from datuma, zabrani promjenu
+                if (filters.from && toDate < filters.from) {
+                  return;
+                }
+                onChange({ ...filters, to: toDate });
+              }}
+              min={filters.from}
               aria-label="Datum do"
             />
           </div>

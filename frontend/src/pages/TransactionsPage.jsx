@@ -19,6 +19,7 @@ export default function TransactionsPage() {
   const [loading, setLoading] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
   const [monthlyBalance, setMonthlyBalance] = useState(null);
+  const [allCategories, setAllCategories] = useState([]);
   const [filters, setFilters] = useState({
     search: "",
     category: ALL,
@@ -97,6 +98,24 @@ export default function TransactionsPage() {
     loadMonthlyBalance();
   }, [user?.id]);
 
+  // Učitaj sve dostupne kategorije
+  useEffect(() => {
+    const loadAllCategories = async () => {
+      if (!user?.id) return;
+      try {
+        // Dohvati sve transakcije bez filtera da vidimo sve dostupne kategorije
+        const response = await api.transactions.getAll(0, 1000);
+        const uniqueCategories = new Set(
+          response.content.map((t) => t.categoryName),
+        );
+        setAllCategories(Array.from(uniqueCategories).sort());
+      } catch (err) {
+        console.error("Greška pri učitavanju kategorija", err);
+      }
+    };
+    loadAllCategories();
+  }, [user?.id]);
+
   const addTransaction = useCallback(
     async (tx) => {
       try {
@@ -139,9 +158,8 @@ export default function TransactionsPage() {
   }, [paginatedTransactions]);
 
   const categories = useMemo(() => {
-    const set = new Set(paginatedTransactions.map((t) => t.category));
-    return Array.from(set).sort();
-  }, [paginatedTransactions]);
+    return allCategories;
+  }, [allCategories]);
 
   const totalPages = Math.ceil(totalCount / pageSize);
 

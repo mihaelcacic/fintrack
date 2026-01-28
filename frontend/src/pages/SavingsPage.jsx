@@ -18,6 +18,14 @@ export default function SavingsPage() {
   });
   const [formError, setFormError] = useState("");
 
+  // Modal state za dodavanje štednje
+  const [savingsModal, setSavingsModal] = useState({
+    show: false,
+    goalId: null,
+    amount: "",
+    error: "",
+  });
+
   // Učitaj ciljeve
   useEffect(() => {
     const fetchGoals = async () => {
@@ -95,21 +103,51 @@ export default function SavingsPage() {
   };
 
   // Dodaj štednju
-  const handleAddSavings = async (goalId) => {
-    const amount = prompt("Koliko novca ste uštedjeli?");
-    if (!amount) return;
+  const handleOpenSavingsModal = (goalId) => {
+    setSavingsModal({
+      show: true,
+      goalId,
+      amount: "",
+      error: "",
+    });
+  };
 
-    const numAmount = parseFloat(amount);
+  const handleCloseSavingsModal = () => {
+    setSavingsModal({
+      show: false,
+      goalId: null,
+      amount: "",
+      error: "",
+    });
+  };
+
+  const handleSubmitSavings = async () => {
+    if (!savingsModal.amount) {
+      setSavingsModal({ ...savingsModal, error: "Unesite iznos" });
+      return;
+    }
+
+    const numAmount = parseFloat(savingsModal.amount);
     if (!Number.isFinite(numAmount) || numAmount <= 0) {
-      alert("Unesite validan iznos");
+      setSavingsModal({
+        ...savingsModal,
+        error: "Iznos mora biti broj veći od 0",
+      });
       return;
     }
 
     try {
-      const updated = await api.savings.addSavings(goalId, numAmount);
-      setGoals(goals.map((g) => (g.id === goalId ? updated : g)));
+      const updated = await api.savings.addSavings(
+        savingsModal.goalId,
+        numAmount,
+      );
+      setGoals(goals.map((g) => (g.id === savingsModal.goalId ? updated : g)));
+      handleCloseSavingsModal();
     } catch (err) {
-      alert(err.message || "Greška pri dodavanju štednje");
+      setSavingsModal({
+        ...savingsModal,
+        error: err.message || "Greška pri dodavanju štednje",
+      });
     }
   };
 
@@ -154,13 +192,7 @@ export default function SavingsPage() {
             {monthlyBalance !== null ? (
               <div>
                 Ušteda ovog mjeseca:{" "}
-                <b>
-                  {(typeof monthlyBalance === "object"
-                    ? monthlyBalance.balance || monthlyBalance.saved || 0
-                    : monthlyBalance
-                  ).toFixed(2)}{" "}
-                  €
-                </b>
+                <b>{(monthlyBalance.balance || 0).toFixed(2)} €</b>
               </div>
             ) : (
               <div className="muted">Učitavanje...</div>
@@ -334,7 +366,7 @@ export default function SavingsPage() {
                     }}
                   >
                     <span className="muted" style={{ fontSize: 12 }}>
-                      Uštedljeno: <b>{goal.currentAmount.toFixed(2)} €</b> od{" "}
+                      Ušteđeno: <b>{goal.currentAmount.toFixed(2)} €</b> od{" "}
                       <b>{goal.targetAmount.toFixed(2)} €</b>
                     </span>
                     <span className="muted" style={{ fontSize: 12 }}>
@@ -398,16 +430,10 @@ export default function SavingsPage() {
 
                 {/* Gumbi */}
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button
-                    onClick={() => handleAddSavings(goal.id)}
-                    className="btn-primary"
-                    style={{ flex: 1 }}
-                  >
-                    + Dodaj u štednju
-                  </button>
-                  {isGoalMet && (
+                  {isGoalMet ? (
                     <span
                       style={{
+                        flex: 1,
                         padding: "10px 12px",
                         background: "rgba(34, 197, 94, 0.18)",
                         border: "1px solid rgba(34, 197, 94, 0.35)",
@@ -415,10 +441,35 @@ export default function SavingsPage() {
                         color: "#4ade80",
                         fontWeight: 600,
                         fontSize: 12,
+                        textAlign: "center",
                       }}
                     >
-                      ✓ Cilj dostignut!
+                      ✓ Cilj dostignut
                     </span>
+                  ) : daysLeft < 0 ? (
+                    <span
+                      style={{
+                        flex: 1,
+                        padding: "10px 12px",
+                        background: "rgba(239, 68, 68, 0.18)",
+                        border: "1px solid rgba(239, 68, 68, 0.35)",
+                        borderRadius: 10,
+                        color: "#ff6b6b",
+                        fontWeight: 600,
+                        fontSize: 12,
+                        textAlign: "center",
+                      }}
+                    >
+                      ✗ Cilj nije dostignut
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => handleOpenSavingsModal(goal.id)}
+                      className="btn-primary"
+                      style={{ flex: 1 }}
+                    >
+                      + Dodaj u štednju
+                    </button>
                   )}
                 </div>
               </div>
@@ -426,6 +477,98 @@ export default function SavingsPage() {
           })
         )}
       </div>
+
+      {/* Modal za dodavanje štednje */}
+      {savingsModal.show && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+          onClick={handleCloseSavingsModal}
+        >
+          <div
+            className="card"
+            style={{
+              width: "90%",
+              maxWidth: 400,
+              padding: 24,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ marginTop: 0, marginBottom: 16 }}>Dodaj u štednju</h3>
+
+            {savingsModal.error && (
+              <div
+                style={{
+                  padding: 12,
+                  background: "rgba(239, 68, 68, 0.15)",
+                  border: "1px solid rgba(239, 68, 68, 0.35)",
+                  borderRadius: 8,
+                  marginBottom: 12,
+                }}
+              >
+                <p style={{ margin: 0, fontSize: 12, color: "#ff6b6b" }}>
+                  {savingsModal.error}
+                </p>
+              </div>
+            )}
+
+            <label style={{ display: "block", marginBottom: 16 }}>
+              Koliko novca ste uštedjeli? (€)
+              <input
+                type="number"
+                placeholder="npr. 150.50"
+                value={savingsModal.amount}
+                onChange={(e) =>
+                  setSavingsModal({ ...savingsModal, amount: e.target.value })
+                }
+                step="0.01"
+                min="0"
+                autoFocus
+                style={{
+                  marginTop: 8,
+                  width: "100%",
+                  padding: "10px 12px",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  borderRadius: 8,
+                  background: "rgba(255, 255, 255, 0.04)",
+                  color: "inherit",
+                  fontSize: 14,
+                  boxSizing: "border-box",
+                }}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter") {
+                    handleSubmitSavings();
+                  }
+                }}
+              />
+            </label>
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={handleCloseSavingsModal}
+                className="btn-secondary"
+                style={{ flex: 1 }}
+              >
+                Otkaži
+              </button>
+              <button
+                onClick={handleSubmitSavings}
+                className="btn-primary"
+                style={{ flex: 1 }}
+              >
+                Dodaj
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
