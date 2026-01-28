@@ -77,17 +77,17 @@ public class SavingGoalService {
 
         BigDecimal available = balance.balance();
 
-        //if (available.compareTo(BigDecimal.ZERO) <= 0) {
-          //  throw new IllegalStateException(
-            //        "Nemate raspoloživog novca za štednju"
-            //);
-        //}
+        if (available.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalStateException(
+                    "Nemate raspoloživog novca za štednju"
+            );
+        }
 
-        //if (amount.compareTo(available) > 0) {
-          //  throw new IllegalStateException(
-            //        "Nemate dovoljno raspoloživog novca"
-            //);
-        //}
+        if (amount.compareTo(available) > 0) {
+            throw new IllegalStateException(
+                    "Nemate dovoljno raspoloživog novca"
+            );
+        }
 
         goal.setCurrentAmount(
                 goal.getCurrentAmount().add(amount)
