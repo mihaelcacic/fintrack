@@ -3,6 +3,7 @@ package com.havana.backend.service;
 import com.havana.backend.data.AdminCreateUserRequest;
 import com.havana.backend.data.AdminUpdateUserRequest;
 import com.havana.backend.data.AdminUserResponse;
+import com.havana.backend.data.RegularUserResponse;
 import com.havana.backend.model.User;
 import com.havana.backend.repository.TransactionRepository;
 import com.havana.backend.repository.UserRepository;
@@ -22,13 +23,48 @@ public class AdminService {
     private final PasswordEncoder passwordEncoder;
 
     // dohvat svih korisnika
-    public List<AdminUserResponse> getAllUsers() {
+    public List<AdminUserResponse> getAdmins() {
+        return userRepository.findAll()
+                .stream()
+                .filter(User::isAdmin)
+                .map(u -> new AdminUserResponse(
+                        u.getId(),
+                        u.getEmail(),
+                        u.getUsername(),
+                        u.getCreatedAt()
+                ))
+                .toList();
+    }
+
+    public List<RegularUserResponse> getRegularUsers() {
 
         return userRepository.findAll()
                 .stream()
-                .map(this::toResponse)
+                .filter(u -> !u.isAdmin())
+                .map(user -> {
+
+                    BigDecimal income =
+                            transactionRepository.sumIncome(user.getId());
+
+                    BigDecimal expense =
+                            transactionRepository.sumExpense(user.getId());
+
+                    income = income != null ? income : BigDecimal.ZERO;
+                    expense = expense != null ? expense : BigDecimal.ZERO;
+
+                    return new RegularUserResponse(
+                            user.getId(),
+                            user.getEmail(),
+                            user.getUsername(),
+                            income,
+                            expense,
+                            income.subtract(expense),
+                            user.getCreatedAt()
+                    );
+                })
                 .toList();
     }
+
 
     // brisanje korisnika
     public void deleteUser(Integer userId) {
@@ -99,11 +135,13 @@ public class AdminService {
         return userRepository.save(user);
     }
 
-    private AdminUserResponse toResponse(User user) {
+
+
+    private RegularUserResponse toResponse(User user) {
         BigDecimal income = transactionRepository.sumIncome(user.getId());
         BigDecimal expense = transactionRepository.sumExpense(user.getId());
 
-        return new AdminUserResponse(
+        return new RegularUserResponse(
                 user.getId(),
                 user.getEmail(),
                 user.getUsername(),

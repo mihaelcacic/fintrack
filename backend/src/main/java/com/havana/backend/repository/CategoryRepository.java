@@ -28,4 +28,11 @@ public interface CategoryRepository extends JpaRepository<Category, Integer> {
 
     Optional<Category> findByIdAndUserId(Integer id, Integer userId);
 
+    List<Category> findAll();
+    // CSV import (već imaš nešto slično)
+    Optional<Category> findByNameIgnoreCaseAndUserAndType(
+            String name,
+            User user,
+            CategoryType type
+    );
 }
