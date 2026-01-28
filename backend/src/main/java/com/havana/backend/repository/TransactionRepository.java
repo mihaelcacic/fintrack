@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -42,4 +43,22 @@ public interface TransactionRepository extends JpaRepository<Transaction, Intege
     );
 
     List<Transaction> findByUserAndTransactionDateAfter(User user, LocalDate fromDate);
+
+    @Query("""
+        SELECT COALESCE(SUM(t.amount), 0)
+        FROM Transaction t
+        JOIN t.category c
+        WHERE t.user.id = :userId
+          AND c.type = 'INCOME'
+    """)
+    BigDecimal sumIncome(Integer userId);
+
+    @Query("""
+        SELECT COALESCE(SUM(t.amount), 0)
+        FROM Transaction t
+        JOIN t.category c
+        WHERE t.user.id = :userId
+          AND c.type = 'EXPENSE'
+    """)
+    BigDecimal sumExpense(Integer userId);
 }
