@@ -11,7 +11,7 @@ export function AuthProvider({ children }) {
     const fetchUser = async () => {
       try {
         const data = await api.auth.me();
-        setUser(data);
+        setUser(data?.user);
       } catch (err) {
         // Backend možda nije spreman, ignoriraj grešku pri učitavanju
         console.error("Failed to fetch user:", err.message);
