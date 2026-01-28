@@ -8,7 +8,9 @@ const AdminPage = () => {
   const { user, setUser } = useAuth();
   const { theme } = useTheme();
 
-  const [users, setUsers] = useState([]);
+  // User management states
+  const [admins, setAdmins] = useState([]);
+  const [regularUsers, setRegularUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -16,6 +18,11 @@ const AdminPage = () => {
   const [showCreateAdmin, setShowCreateAdmin] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [processingUser, setProcessingUser] = useState(null);
+
+  // Category management states
+  const [showCreateCategory, setShowCreateCategory] = useState(false);
+  const [processingCategory, setProcessingCategory] = useState(null);
+  const [categories, setCategories] = useState([]);
 
   // Form states
   const [newUserForm, setNewUserForm] = useState({
@@ -33,6 +40,10 @@ const AdminPage = () => {
     username: "",
     password: "",
     isAdmin: false,
+  });
+  const [newCategoryForm, setNewCategoryForm] = useState({
+    name: "",
+    type: "EXPENSE",
   });
 
   // Check if user is admin
@@ -75,17 +86,23 @@ const AdminPage = () => {
     }
   }, [error, success]);
 
-  // Load users on mount
+  // Load data on mount
   useEffect(() => {
-    loadUsers();
+    loadAllData();
   }, []);
 
-  const loadUsers = async () => {
+  const loadAllData = async () => {
     try {
       setLoading(true);
       setError(null);
-      const userData = await admin.getAllUsers();
-      setUsers(userData);
+      const [adminsData, usersData, categoriesData] = await Promise.all([
+        admin.getAdmins(),
+        admin.getRegularUsers(),
+        api.categories.getAll(),
+      ]);
+      setAdmins(adminsData);
+      setRegularUsers(usersData);
+      setCategories(categoriesData);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -104,7 +121,7 @@ const AdminPage = () => {
       setProcessingUser(userId);
       await admin.deleteUser(userId);
       setSuccess("Korisnik je uspješno obrisan.");
-      await loadUsers();
+      await loadAllData();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -124,7 +141,7 @@ const AdminPage = () => {
       setNewUserForm({ email: "", username: "", password: "" });
       setShowCreateUser(false);
       setSuccess("Korisnik je uspješno kreiran.");
-      await loadUsers();
+      await loadAllData();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -144,7 +161,7 @@ const AdminPage = () => {
       setNewAdminForm({ email: "", username: "", password: "" });
       setShowCreateAdmin(false);
       setSuccess("Admin je uspješno kreiran.");
-      await loadUsers();
+      await loadAllData();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -164,7 +181,6 @@ const AdminPage = () => {
         editForm.isAdmin,
       );
 
-      // Ako admin mijenja svoj vlastiti account, ažuriraj user podatke u AuthContext
       if (editingUser.id === user.id) {
         try {
           const updatedUserData = await api.auth.me();
@@ -177,11 +193,49 @@ const AdminPage = () => {
       setEditingUser(null);
       setEditForm({ email: "", username: "", password: "", isAdmin: false });
       setSuccess("Korisnik je uspješno ažuriran.");
-      await loadUsers();
+      await loadAllData();
     } catch (err) {
       setError(err.message);
     } finally {
       setProcessingUser(null);
+    }
+  };
+
+  const handleCreateCategory = async (e) => {
+    e.preventDefault();
+    try {
+      setProcessingCategory("create");
+      await admin.createGlobalCategory(
+        newCategoryForm.name,
+        newCategoryForm.type,
+      );
+      setNewCategoryForm({ name: "", type: "EXPENSE" });
+      setShowCreateCategory(false);
+      setSuccess("Kategorija je uspješno kreirana.");
+      await loadAllData();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setProcessingCategory(null);
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId) => {
+    if (
+      !window.confirm("Jeste li sigurni da želite obrisati ovu kategoriju?")
+    ) {
+      return;
+    }
+
+    try {
+      setProcessingCategory(categoryId);
+      await admin.deleteGlobalCategory(categoryId);
+      setSuccess("Kategorija je uspješno obrisana.");
+      await loadAllData();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setProcessingCategory(null);
     }
   };
 
@@ -193,6 +247,10 @@ const AdminPage = () => {
       password: "",
       isAdmin: userData.role === "ROLE_ADMIN",
     });
+  };
+
+  const formatDate = (date) => {
+    return new Date(date).toLocaleDateString("hr-HR");
   };
 
   const formatCurrency = (amount) => {
@@ -258,23 +316,6 @@ const AdminPage = () => {
           borderRadius: 8,
         }}
       />
-      <div style={{ marginBottom: 32 }}>
-        <h2
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            marginBottom: 8,
-            fontSize: "22px",
-            letterSpacing: "-0.02em",
-          }}
-        >
-          Admin Panel
-        </h2>
-        <p className="muted" style={{ fontSize: "1rem" }}>
-          Upravljanje korisnicima sistema
-        </p>
-      </div>
 
       {/* Messages */}
       {error && (
@@ -316,54 +357,6 @@ const AdminPage = () => {
           </div>
         </div>
       )}
-
-      {/* Action Buttons */}
-      <div className="row" style={{ marginBottom: "32px" }}>
-        <button
-          onClick={() => {
-            setShowCreateUser(!showCreateUser);
-            setShowCreateAdmin(false);
-            setEditingUser(null);
-          }}
-          style={{
-            background: showCreateUser ? "var(--danger)" : "var(--accent)",
-            color: "white",
-            border: "1px solid transparent",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-          }}
-        >
-          {showCreateUser ? "Odustani" : "Dodaj korisnika"}
-        </button>
-        <button
-          onClick={() => {
-            setShowCreateAdmin(!showCreateAdmin);
-            setShowCreateUser(false);
-            setEditingUser(null);
-          }}
-          style={{
-            background: showCreateAdmin ? "var(--danger)" : "var(--accent)",
-            color: "white",
-            border: "1px solid transparent",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-          }}
-        >
-          {showCreateAdmin ? "Odustani" : "Dodaj admina"}
-        </button>
-        <button
-          onClick={loadUsers}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-          }}
-        >
-          Osvježi
-        </button>
-      </div>
 
       {/* Grid Layout for Forms and Content */}
       <div
@@ -470,9 +463,7 @@ const AdminPage = () => {
                       Stvaranje...
                     </>
                   ) : (
-                    <>
-                      Stvori korisnika
-                    </>
+                    <>Stvori korisnika</>
                   )}
                 </button>
               </div>
@@ -582,9 +573,7 @@ const AdminPage = () => {
                       Stvaranje...
                     </>
                   ) : (
-                    <>
-                      Stvori admina
-                    </>
+                    <>Stvori admina</>
                   )}
                 </button>
               </div>
@@ -761,9 +750,7 @@ const AdminPage = () => {
                       Spremanje...
                     </>
                   ) : (
-                    <>
-                      Spremi promjene
-                    </>
+                    <>Spremi promjene</>
                   )}
                 </button>
                 <button
@@ -786,11 +773,21 @@ const AdminPage = () => {
         )}
 
         {/* Users Table */}
-        <div className="card" style={{ padding: "0" }}>
+        <div
+          className="card"
+          style={{
+            padding: "0",
+            overflow: "hidden", // KLJUČNO
+            borderRadius: "16px", // card je zaobljen
+          }}
+        >
           <div
             style={{
               padding: "16px",
               borderBottom: "1px solid var(--border)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
             }}
           >
             <h3
@@ -803,122 +800,65 @@ const AdminPage = () => {
               }}
             >
               <span>👥</span>
-              Korisnici ({users.length})
+              Korisnici ({regularUsers.length})
             </h3>
+            <button
+              onClick={() => {
+                setShowCreateUser(!showCreateUser);
+                setShowCreateAdmin(false);
+                setEditingUser(null);
+              }}
+              style={{
+                background: showCreateUser ? "var(--danger)" : "var(--accent)",
+                color: "white",
+                border: "1px solid transparent",
+                borderRadius: "10px",
+                padding: "8px 12px",
+                fontSize: "12px",
+                fontWeight: 500,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              {showCreateUser ? "Odustani" : "Dodaj korisnika"}
+            </button>
           </div>
 
-          <div style={{ overflow: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead style={{ background: "var(--panel-2)" }}>
+          <div
+            style={{
+              overflowX: "auto",
+              overflowY: "hidden",
+              borderRadius: "16px",
+            }}
+          >
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+              }}
+            >
+              <thead
+                style={{
+                  background: "var(--panel-2)",
+                  borderRadius: 0,
+                }}
+              >
                 <tr>
-                  <th
-                    style={{
-                      padding: "12px 16px",
-                      textAlign: "left",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      color: "var(--muted)",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                    }}
-                  >
-                    ID
-                  </th>
-                  <th
-                    style={{
-                      padding: "12px 16px",
-                      textAlign: "left",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      color: "var(--muted)",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                    }}
-                  >
-                    Korisničko ime
-                  </th>
-                  <th
-                    style={{
-                      padding: "12px 16px",
-                      textAlign: "left",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      color: "var(--muted)",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                    }}
-                  >
-                    Email
-                  </th>
-                  <th
-                    style={{
-                      padding: "12px 16px",
-                      textAlign: "left",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      color: "var(--muted)",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                    }}
-                  >
-                    Status
-                  </th>
-                  <th
-                    style={{
-                      padding: "12px 16px",
-                      textAlign: "left",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      color: "var(--muted)",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                    }}
-                  >
-                    Prihodi
-                  </th>
-                  <th
-                    style={{
-                      padding: "12px 16px",
-                      textAlign: "left",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      color: "var(--muted)",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                    }}
-                  >
-                    Rashodi
-                  </th>
-                  <th
-                    style={{
-                      padding: "12px 16px",
-                      textAlign: "left",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      color: "var(--muted)",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                    }}
-                  >
-                    Saldo
-                  </th>
-                  <th
-                    style={{
-                      padding: "12px 16px",
-                      textAlign: "left",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      color: "var(--muted)",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                    }}
-                  >
-                    Akcije
-                  </th>
+                  <th style={thLeft}>ID</th>
+                  <th style={th}>Korisničko ime</th>
+                  <th style={th}>Email</th>
+                  <th style={th}>Status</th>
+                  <th style={th}>Prihodi</th>
+                  <th style={th}>Rashodi</th>
+                  <th style={th}>Saldo</th>
+                  <th style={thRight}>Akcije</th>
                 </tr>
               </thead>
+
               <tbody>
-                {users.map((userData) => (
+                {regularUsers.map((userData) => (
                   <tr
                     key={userData.id}
                     style={{
@@ -939,7 +879,11 @@ const AdminPage = () => {
                     </td>
                     <td style={{ padding: "12px 16px" }}>
                       <div className="row" style={{ gap: "8px" }}>
-                        <span>{userData.role === "ROLE_ADMIN" ? "Admin" : "Korisnik"}</span>
+                        <span>
+                          {userData.role === "ROLE_ADMIN"
+                            ? "Admin"
+                            : "Korisnik"}
+                        </span>
                         <span
                           style={{
                             fontSize: "14px",
@@ -1021,8 +965,11 @@ const AdminPage = () => {
                     >
                       {formatCurrency(userData.balance)}
                     </td>
-                    <td style={{ padding: "12px 16px" }}>
-                      <div className="row" style={{ gap: "12px" }}>
+                    <td style={tdActions}>
+                      <div
+                        className="row"
+                        style={{ gap: "12px", justifyContent: "flex-end" }}
+                      >
                         <button
                           onClick={() => startEdit(userData)}
                           disabled={processingUser === userData.id}
@@ -1093,7 +1040,7 @@ const AdminPage = () => {
             </table>
           </div>
 
-          {users.length === 0 && (
+          {regularUsers.length === 0 && (
             <div
               style={{
                 textAlign: "center",
@@ -1109,18 +1056,584 @@ const AdminPage = () => {
         </div>
       </div>
 
+      {/* Admins Table */}
+      <div
+        className="card"
+        style={{
+          padding: "0",
+          overflow: "hidden", // KLJUČNO
+          borderRadius: "16px", // card je zaobljen
+        }}
+      >
+        <div
+          style={{
+            padding: "16px",
+            borderBottom: "1px solid var(--border)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <h3
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              margin: 0,
+              fontSize: "18px",
+            }}
+          >
+            Admini ({admins.length})
+          </h3>
+          <button
+            onClick={() => {
+              setShowCreateAdmin(!showCreateAdmin);
+              setShowCreateUser(false);
+              setEditingUser(null);
+            }}
+            style={{
+              background: showCreateAdmin ? "var(--danger)" : "var(--accent)",
+              color: "white",
+              border: "1px solid transparent",
+              borderRadius: "10px",
+              padding: "8px 12px",
+              fontSize: "12px",
+              fontWeight: 500,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            {showCreateAdmin ? "Odustani" : "Dodaj admina"}
+          </button>
+        </div>
+
+        <div
+          style={{
+            overflowX: "auto",
+            overflowY: "hidden",
+            borderRadius: "16px",
+          }}
+        >
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+            }}
+          >
+            <thead
+              style={{
+                background: "var(--panel-2)",
+                borderRadius: 0,
+              }}
+            >
+              <tr>
+                <th
+                  style={{
+                    padding: "12px 16px",
+                    textAlign: "left",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    color: "var(--muted)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                    borderRadius: 0,
+                  }}
+                >
+                  ID
+                </th>
+                <th
+                  style={{
+                    padding: "12px 16px",
+                    textAlign: "left",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    color: "var(--muted)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                    borderRadius: 0,
+                  }}
+                >
+                  Korisničko ime
+                </th>
+                <th
+                  style={{
+                    padding: "12px 16px",
+                    textAlign: "left",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    color: "var(--muted)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                    borderRadius: 0,
+                  }}
+                >
+                  Email
+                </th>
+                <th
+                  style={{
+                    padding: "12px 16px",
+                    textAlign: "left",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    color: "var(--muted)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                    borderRadius: 0,
+                  }}
+                >
+                  Kreiran
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {admins.map((admin) => (
+                <tr
+                  key={admin.id}
+                  style={{
+                    borderBottom: "1px solid var(--border)",
+                    transition: "background-color 0.2s ease",
+                  }}
+                >
+                  <td
+                    style={{
+                      padding: "12px 16px",
+                      fontSize: "14px",
+                      fontFamily: "monospace",
+                      fontWeight: 500,
+                      color: "var(--muted)",
+                    }}
+                  >
+                    #{admin.id}
+                  </td>
+                  <td
+                    style={{
+                      padding: "12px 16px",
+                      fontSize: "14px",
+                      fontWeight: 500,
+                      color: "var(--text)",
+                    }}
+                  >
+                    {admin.username}
+                  </td>
+                  <td
+                    style={{
+                      padding: "12px 16px",
+                      fontSize: "14px",
+                      color: "var(--text)",
+                    }}
+                  >
+                    {admin.email}
+                  </td>
+                  <td
+                    style={{
+                      padding: "12px 16px",
+                      fontSize: "14px",
+                      color: "var(--muted)",
+                    }}
+                  >
+                    {formatDate(admin.createdAt)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {admins.length === 0 && (
+          <div
+            style={{
+              textAlign: "center",
+              padding: "48px",
+            }}
+          >
+            <p className="muted" style={{ fontSize: "1.1rem", margin: 0 }}>
+              Nema admina za prikaz
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Categories Table */}
+      <div
+        className="card"
+        style={{
+          padding: "0",
+          overflow: "hidden", // KLJUČNO
+          borderRadius: "16px", // card je zaobljen
+        }}
+      >
+        <div
+          style={{
+            padding: "16px",
+            borderBottom: "1px solid var(--border)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <h3
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              margin: 0,
+              fontSize: "18px",
+            }}
+          >
+            Kategorije ({categories.length})
+          </h3>
+          <button
+            onClick={() => setShowCreateCategory(!showCreateCategory)}
+            style={{
+              background: showCreateCategory
+                ? "var(--danger)"
+                : "var(--accent)",
+              color: "white",
+              border: "1px solid transparent",
+              borderRadius: "10px",
+              padding: "8px 12px",
+              fontSize: "12px",
+              fontWeight: 500,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            {showCreateCategory ? "Odustani" : "Dodaj kategoriju"}
+          </button>
+        </div>
+
+        {showCreateCategory && (
+          <div
+            style={{ padding: "16px", borderBottom: "1px solid var(--border)" }}
+          >
+            <form
+              onSubmit={handleCreateCategory}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                gap: "16px",
+                alignItems: "start",
+              }}
+            >
+              <label>
+                Naziv kategorije
+                <input
+                  type="text"
+                  placeholder="npr. Hrana"
+                  value={newCategoryForm.name}
+                  onChange={(e) =>
+                    setNewCategoryForm({
+                      ...newCategoryForm,
+                      name: e.target.value,
+                    })
+                  }
+                  required
+                />
+              </label>
+              <label>
+                Tip
+                <select
+                  value={newCategoryForm.type}
+                  onChange={(e) =>
+                    setNewCategoryForm({
+                      ...newCategoryForm,
+                      type: e.target.value,
+                    })
+                  }
+                >
+                  <option value="INCOME">Prihod</option>
+                  <option value="EXPENSE">Trošak</option>
+                </select>
+              </label>
+              <button
+                type="submit"
+                disabled={processingCategory === "create"}
+                style={{
+                  background:
+                    processingCategory === "create"
+                      ? "var(--border)"
+                      : "var(--accent)",
+                  color: "white",
+                  border: "1px solid transparent",
+                  opacity: processingCategory === "create" ? 0.5 : 1,
+                  cursor:
+                    processingCategory === "create" ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  borderRadius: "10px",
+                  padding: "8px 12px",
+                  fontSize: "12px",
+                  fontWeight: 500,
+                }}
+              >
+                {processingCategory === "create" ? (
+                  <>
+                    <div
+                      style={{
+                        width: "16px",
+                        height: "16px",
+                        border: "2px solid transparent",
+                        borderTop: "2px solid white",
+                        borderRadius: "50%",
+                        animation: "spin 1s linear infinite",
+                      }}
+                    ></div>
+                    Stvaranje...
+                  </>
+                ) : (
+                  <>Stvori kategoriju</>
+                )}
+              </button>
+            </form>
+          </div>
+        )}
+
+        <div
+          style={{
+            overflowX: "auto",
+            overflowY: "hidden",
+            borderRadius: "16px",
+          }}
+        >
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+            }}
+          >
+            <thead
+              style={{
+                background: "var(--panel-2)",
+                borderRadius: 0,
+              }}
+            >
+              <tr>
+                <th
+                  style={{
+                    padding: "12px 16px",
+                    textAlign: "left",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    color: "var(--muted)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                    borderRadius: 0,
+                  }}
+                >
+                  ID
+                </th>
+                <th
+                  style={{
+                    padding: "12px 16px",
+                    textAlign: "left",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    color: "var(--muted)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                    borderRadius: 0,
+                  }}
+                >
+                  Naziv
+                </th>
+                <th
+                  style={{
+                    padding: "12px 16px",
+                    textAlign: "left",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    color: "var(--muted)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                    borderRadius: 0,
+                  }}
+                >
+                  Tip
+                </th>
+                <th
+                  style={{
+                    padding: "12px 16px",
+                    textAlign: "left",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    color: "var(--muted)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                    borderRadius: 0,
+                  }}
+                >
+                  Akcije
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {categories.map((category) => (
+                <tr
+                  key={category.id}
+                  style={{
+                    borderBottom: "1px solid var(--border)",
+                    transition: "background-color 0.2s ease",
+                  }}
+                >
+                  <td
+                    style={{
+                      padding: "12px 16px",
+                      fontSize: "14px",
+                      fontFamily: "monospace",
+                      fontWeight: 500,
+                      color: "var(--muted)",
+                    }}
+                  >
+                    #{category.id}
+                  </td>
+                  <td
+                    style={{
+                      padding: "12px 16px",
+                      fontSize: "14px",
+                      fontWeight: 500,
+                      color: "var(--text)",
+                    }}
+                  >
+                    {category.name}
+                  </td>
+                  <td
+                    style={{
+                      padding: "12px 16px",
+                      fontSize: "14px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        padding: "4px 8px",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        borderRadius: "6px",
+                        background:
+                          category.type === "INCOME"
+                            ? "rgba(34, 197, 94, 0.2)"
+                            : "rgba(239, 68, 68, 0.2)",
+                        color:
+                          category.type === "INCOME"
+                            ? "var(--accent-2)"
+                            : "var(--danger)",
+                        border: `1px solid ${
+                          category.type === "INCOME"
+                            ? "var(--accent-2)"
+                            : "var(--danger)"
+                        }`,
+                      }}
+                    >
+                      {category.type === "INCOME" ? "Prihod" : "Trošak"}
+                    </span>
+                  </td>
+                  <td style={{ padding: "12px 16px" }}>
+                    <button
+                      onClick={() => handleDeleteCategory(category.id)}
+                      disabled={processingCategory === category.id}
+                      style={{
+                        background: "var(--danger)",
+                        color: "white",
+                        border: "1px solid transparent",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        padding: "8px 12px",
+                        borderRadius: "10px",
+                        cursor:
+                          processingCategory === category.id
+                            ? "not-allowed"
+                            : "pointer",
+                        opacity: processingCategory === category.id ? 0.6 : 1,
+                        fontSize: "12px",
+                        fontWeight: 500,
+                      }}
+                    >
+                      {processingCategory === category.id ? (
+                        <>
+                          <div
+                            style={{
+                              width: "16px",
+                              height: "16px",
+                              border: "2px solid transparent",
+                              borderTop: "2px solid white",
+                              borderRadius: "50%",
+                              animation: "spin 1s linear infinite",
+                            }}
+                          ></div>
+                          Brisanje...
+                        </>
+                      ) : (
+                        <>Obriši</>
+                      )}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {categories.length === 0 && (
+          <div
+            style={{
+              textAlign: "center",
+              padding: "48px",
+            }}
+          >
+            <p className="muted" style={{ fontSize: "1.1rem", margin: 0 }}>
+              Nema kategorija za prikaz
+            </p>
+          </div>
+        )}
+      </div>
+
       <style>{`
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
         
-        tr:hover {
-          background-color: var(--panel-2) !important;
+        table tbody tr:hover {
+        background-color: var(--panel-2);
         }
       `}</style>
     </div>
   );
+};
+
+const th = {
+  padding: "12px 16px",
+  textAlign: "left",
+  fontSize: "12px",
+  fontWeight: 600,
+  color: "var(--muted)",
+  textTransform: "uppercase",
+  letterSpacing: "0.5px",
+};
+
+const thLeft = {
+  ...th,
+};
+
+const thRight = {
+  ...th,
+  textAlign: "right",
+  width: "220px",
+  whiteSpace: "nowrap",
+};
+
+const tdActions = {
+  padding: "12px 16px",
+  textAlign: "right",
+  whiteSpace: "nowrap",
 };
 
 export default AdminPage;

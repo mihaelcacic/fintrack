@@ -338,8 +338,17 @@ export const prediction = {
 // ADMIN ENDPOINTS
 // =====================
 export const admin = {
-  getAllUsers: async () => {
-    const res = await fetch(`${API_BASE}/admin/users`, {
+  getAdmins: async () => {
+    const res = await fetch(`${API_BASE}/admin/users/admins`, {
+      method: "GET",
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Greška pri dohvaćanju admina");
+    return parseJSON(res);
+  },
+
+  getRegularUsers: async () => {
+    const res = await fetch(`${API_BASE}/admin/users/regular`, {
       method: "GET",
       credentials: "include",
     });
@@ -400,5 +409,28 @@ export const admin = {
       throw new Error(data.message || "Greška pri ažuriranju korisnika");
     }
     return parseJSON(res);
+  },
+
+  createGlobalCategory: async (name, type) => {
+    const res = await fetch(`${API_BASE}/admin/categories`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, type }),
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const data = await parseJSON(res);
+      throw new Error(data.message || "Greška pri kreiranju kategorije");
+    }
+    return parseJSON(res);
+  },
+
+  deleteGlobalCategory: async (categoryId) => {
+    const res = await fetch(`${API_BASE}/admin/categories/${categoryId}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Greška pri brisanju kategorije");
+    return res.ok;
   },
 };
