@@ -2,6 +2,7 @@ package com.havana.backend.service;
 
 import com.havana.backend.model.Transaction;
 import com.havana.backend.model.User;
+import com.havana.backend.model.CategoryType;
 import com.havana.backend.repository.TransactionRepository;
 import com.havana.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,13 @@ public class AnalysisService {
 
     private final TransactionRepository transactionRepository;
     private final UserRepository userRepository;
+
+    // Treat uncategorized as expense for analysis (same behaviour as PredictionService)
+    private static boolean isExpenseOrUncategorized(Transaction t) {
+        if (t == null) return false;
+        if (t.getCategory() == null) return true;
+        return t.getCategory().getType() == CategoryType.EXPENSE;
+    }
 
     /**
      * Returns month -> total spending for the last `months` months (inclusive of current month).
@@ -35,10 +43,12 @@ public class AnalysisService {
         LocalDate endDate = end.atEndOfMonth();
 
         List<Transaction> list = transactionRepository.findByUserAndTransactionDateBetween(user, startDate, endDate);
-        // Aggregate per YearMonth
+        // Aggregate per YearMonth, but include only expense (or uncategorized) transactions
         Map<YearMonth, Double> agg = new HashMap<>();
         for (Transaction t : list) {
             if (t.getTransactionDate() == null || t.getAmount() == null) continue;
+            // only expenses (or uncategorized)
+            if (!isExpenseOrUncategorized(t)) continue;
             if (categoryId != null) {
                 if (t.getCategory() == null || t.getCategory().getId() == null) continue;
                 if (!categoryId.equals(t.getCategory().getId())) continue;
@@ -76,6 +86,8 @@ public class AnalysisService {
         Map<LocalDate, Double> agg = new HashMap<>();
         for (Transaction t : list) {
             if (t.getTransactionDate() == null || t.getAmount() == null) continue;
+            // only expenses (or uncategorized)
+            if (!isExpenseOrUncategorized(t)) continue;
             if (categoryId != null) {
                 if (t.getCategory() == null || t.getCategory().getId() == null) continue;
                 if (!categoryId.equals(t.getCategory().getId())) continue;
