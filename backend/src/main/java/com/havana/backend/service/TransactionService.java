@@ -291,7 +291,7 @@ public class TransactionService {
 
         LocalDate now = LocalDate.now();
         LocalDate startOfMonth = now.withDayOfMonth(1);
-        LocalDate endOfMonth = now;
+        LocalDate endOfMonth = now.withDayOfMonth(now.lengthOfMonth());
 
         List<Transaction> transactions =
                 transactionRepository.findForUserAndMonth(
