@@ -2,10 +2,9 @@ package com.havana.backend.controller;
 
 import com.havana.backend.data.AdminCreateUserRequest;
 import com.havana.backend.data.AdminUpdateUserRequest;
-import com.havana.backend.data.AdminUserResponse;
+import com.havana.backend.data.RegularUserResponse;
 import com.havana.backend.model.User;
 import com.havana.backend.service.AdminService;
-import com.havana.backend.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,10 +18,19 @@ public class AdminController {
 
     private final AdminService adminService;
 
-    // dohvat korisnika
-    @GetMapping("/users")
-    public ResponseEntity<List<AdminUserResponse>> getUsers() {
-        return ResponseEntity.ok(adminService.getAllUsers());
+    // dodavanje
+    @GetMapping("/users/admins")
+    public ResponseEntity<?> getAdmins() {
+        return ResponseEntity.ok(
+                adminService.getAdmins()
+        );
+    }
+
+    @GetMapping("/users/regular")
+    public ResponseEntity<?> getRegularUsers() {
+        return ResponseEntity.ok(
+                adminService.getRegularUsers()
+        );
     }
 
     // brisanje korisnika
