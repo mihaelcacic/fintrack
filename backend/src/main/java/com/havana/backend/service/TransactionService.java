@@ -36,6 +36,9 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.math.BigDecimal;
 
+import static com.havana.backend.model.CategoryType.EXPENSE;
+import static com.havana.backend.model.CategoryType.INCOME;
+
 @Service
 @RequiredArgsConstructor
 public class TransactionService {
@@ -299,9 +302,9 @@ public class TransactionService {
         BigDecimal expense = BigDecimal.ZERO;
 
         for (Transaction t : transactions) {
-            if ("INCOME".equals(t.getCategory().getType())) {
+            if (INCOME.equals(t.getCategory().getType())) {
                 income = income.add(t.getAmount());
-            } else if ("EXPENSE".equals(t.getCategory().getType())) {
+            } else if (EXPENSE.equals(t.getCategory().getType())) {
                 expense = expense.add(t.getAmount());
             }
         }
