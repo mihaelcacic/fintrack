@@ -76,17 +76,10 @@ public class AuthController {
             authorities = List.of(new SimpleGrantedAuthority("ROLE_USER"));
         }
 
-        List<SimpleGrantedAuthority> authorities = new ArrayList<>();
-        authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
-        if (user.isAdmin()) {
-            authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
-        }
-
         UsernamePasswordAuthenticationToken auth =
                 new UsernamePasswordAuthenticationToken(
                         user.getId(),   // principal (ti koristiš userId)
                         null,
-                        authorities
                         authorities
                 );
 
