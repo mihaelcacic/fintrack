@@ -24,7 +24,7 @@ public class AdminService {
     // dohvat svih korisnika
     public List<AdminUserResponse> getAllUsers() {
 
-        return userRepository.findByIsAdminFalse()
+        return userRepository.findAll()
                 .stream()
                 .map(this::toResponse)
                 .toList();

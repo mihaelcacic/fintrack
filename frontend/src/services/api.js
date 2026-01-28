@@ -333,3 +333,72 @@ export const prediction = {
     return parseJSON(res);
   },
 };
+
+// =====================
+// ADMIN ENDPOINTS
+// =====================
+export const admin = {
+  getAllUsers: async () => {
+    const res = await fetch(`${API_BASE}/admin/users`, {
+      method: "GET",
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Greška pri dohvaćanju korisnika");
+    return parseJSON(res);
+  },
+
+  deleteUser: async (userId) => {
+    const res = await fetch(`${API_BASE}/admin/delete-users/${userId}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Greška pri brisanju korisnika");
+    return res.ok;
+  },
+
+  createUser: async (email, username, password) => {
+    const res = await fetch(`${API_BASE}/admin/create-user`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, username, password }),
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const data = await parseJSON(res);
+      throw new Error(data.message || "Greška pri kreiranju korisnika");
+    }
+    return parseJSON(res);
+  },
+
+  createAdmin: async (email, username, password) => {
+    const res = await fetch(`${API_BASE}/admin/create-admin`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, username, password }),
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const data = await parseJSON(res);
+      throw new Error(data.message || "Greška pri kreiranju admina");
+    }
+    return parseJSON(res);
+  },
+
+  updateUser: async (userId, email, username, password = null, isAdmin = null) => {
+    const payload = { email, username };
+    if (password) payload.password = password;
+    if (isAdmin !== null) payload.isAdmin = isAdmin;
+
+    const res = await fetch(`${API_BASE}/admin/users/${userId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const data = await parseJSON(res);
+      throw new Error(data.message || "Greška pri ažuriranju korisnika");
+    }
+    return parseJSON(res);
+  },
+};

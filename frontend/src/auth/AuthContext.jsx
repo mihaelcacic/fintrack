@@ -32,7 +32,7 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const userData = await api.auth.login(email, password);
-    setUser(userData);
+    setUser(userData); // API now returns user object directly with role field
     return userData;
   };
 
@@ -42,7 +42,15 @@ export function AuthProvider({ children }) {
   };
 
   const value = useMemo(
-    () => ({ user, isAuthenticated: !!user, loading, register, login, logout }),
+    () => ({
+      user,
+      setUser,
+      isAuthenticated: !!user,
+      loading,
+      register,
+      login,
+      logout,
+    }),
     [user, loading],
   );
 
