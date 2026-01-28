@@ -1,8 +1,10 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 
 export default function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   if (!isAuthenticated) return null;
@@ -16,7 +18,7 @@ export default function Navbar() {
     <div className="navbar">
       <div className="navbar-inner">
         <div className="brand">
-          <span className="brand-dot" />
+          <img src="/logo.png" alt="FinTrack logo" className="brand-logo" />
           FinTrack
         </div>
 
@@ -41,6 +43,24 @@ export default function Navbar() {
           </NavLink>
 
           <NavLink
+            to="/savings"
+            className={({ isActive }) =>
+              isActive ? "nav-link active" : "nav-link"
+            }
+          >
+            Štednja
+          </NavLink>
+
+          <NavLink
+            to="/analysis"
+            className={({ isActive }) =>
+              isActive ? "nav-link active" : "nav-link"
+            }
+          >
+            Analiza
+          </NavLink>
+
+          <NavLink
             to="/import"
             className={({ isActive }) =>
               isActive ? "nav-link active" : "nav-link"
@@ -51,7 +71,14 @@ export default function Navbar() {
         </div>
 
         <div className="nav-right">
-          <span className="badge">{user.name}</span>
+          <span className="badge">{user.username}</span>
+          <button
+            className="btn-theme"
+            onClick={toggleTheme}
+            title="Promijeni temu"
+          >
+            {theme === "dark" ? "☀️" : "🌙"}
+          </button>
           <button className="btn-danger" onClick={onLogout}>
             Odjava
           </button>

@@ -33,22 +33,15 @@ public class SecurityConfig {
 
                 // ---- CSRF ----
                 .csrf(AbstractHttpConfigurer::disable)
+
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .anyRequest().authenticated()
+                        .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/me").permitAll()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .anyRequest().hasRole("USER")
                 )
 
                 .formLogin(AbstractHttpConfigurer::disable)
-                .httpBasic(AbstractHttpConfigurer::disable)
-
-//                // ---- LOGOUT ----
-//                .logout(logout -> logout
-//                        .logoutUrl("/logout")
-//                        .logoutSuccessUrl(frontendUrl + "/login")
-//                        .invalidateHttpSession(true)
-//                        .deleteCookies("JSESSIONID")
-//                )
-                    ;
+                .httpBasic(AbstractHttpConfigurer::disable);
 
         return http.build();
     }

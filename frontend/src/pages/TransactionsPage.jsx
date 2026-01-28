@@ -1,21 +1,25 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { getTransactions, saveTransactions } from "../data/storage";
 import TransactionForm from "../features/transactions/TransactionForm";
 import TransactionTable from "../features/transactions/TransactionTable";
 import TransactionFilters, {
   ALL,
 } from "../features/transactions/TransactionFilters";
+import TransactionTableSkeleton from "../components/TransactionTableSkeleton";
+import Skeleton from "../components/Skeleton";
+import * as api from "../services/api";
 
 export default function TransactionsPage() {
   const { user } = useAuth();
-  const [transactions, setTransactions] = useState([]);
-
-  useEffect(() => {
-    setTransactions(getTransactions(user.id));
-  }, [user.id]);
-
+  const [paginatedTransactions, setPaginatedTransactions] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [displayPage, setDisplayPage] = useState(0);
+  const [pageSize] = useState(10);
+  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [monthlyBalance, setMonthlyBalance] = useState(null);
+  const [allCategories, setAllCategories] = useState([]);
   const [filters, setFilters] = useState({
     search: "",
     category: ALL,
@@ -24,112 +28,217 @@ export default function TransactionsPage() {
     to: "",
     minAmount: "",
     maxAmount: "",
-    sort: "date_desc", // default: najnovije
+    sort: "date_desc",
   });
 
-  const addTransaction = (tx) => {
-    const updated = [tx, ...transactions];
-    setTransactions(updated);
-    saveTransactions(user.id, updated);
-  };
+  const fetchTransactions = useCallback(async () => {
+    if (!user?.id) {
+      setLoading(false);
+      if (initialLoading) setInitialLoading(false);
+      return;
+    }
+    try {
+      // Gradi filter objekat za backend
+      const searchFilter = {
+        description: filters.search || null,
+        categoryName: filters.category !== ALL ? filters.category : null,
+        categoryType: filters.type !== ALL ? filters.type.toUpperCase() : null,
+        fromDate: filters.from || null,
+        toDate: filters.to || null,
+        minAmount: filters.minAmount ? Number(filters.minAmount) : null,
+        maxAmount: filters.maxAmount ? Number(filters.maxAmount) : null,
+        sortBy: filters.sort,
+      };
 
-  const deleteTransaction = (id) => {
-    const updated = transactions.filter((t) => t.id !== id);
-    setTransactions(updated);
-    saveTransactions(user.id, updated);
-  };
+      // Pozovi server-side search endpoint
+      const data = await api.transactions.search(
+        searchFilter,
+        displayPage,
+        pageSize,
+      );
+
+      const formatted = data.content.map((t) => ({
+        id: t.id,
+        type: t.categoryType === "INCOME" ? "income" : "expense",
+        amount: +t.amount,
+        category: t.categoryName || "Ostalo",
+        categoryId: t.categoryId,
+        date: t.transactionDate,
+        description: t.description || "",
+      }));
+
+      setPaginatedTransactions(formatted);
+      setTotalCount(data.totalElements || 0);
+    } catch (err) {
+      console.error("Greška pri učitavanju transakcija", err);
+    } finally {
+      setLoading(false);
+      if (initialLoading) setInitialLoading(false);
+    }
+  }, [user?.id, displayPage, pageSize, filters]);
+
+  // Resetuj stranicu kada se filter promijeni
+  useEffect(() => {
+    setDisplayPage(0);
+  }, [
+    filters.search,
+    filters.category,
+    filters.type,
+    filters.from,
+    filters.to,
+    filters.minAmount,
+    filters.maxAmount,
+  ]);
+
+  useEffect(() => {
+    // Debounce za search - bez postavljanja loading na true
+    const timer = setTimeout(() => {
+      fetchTransactions();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [fetchTransactions]);
+
+  useEffect(() => {
+    const loadMonthlyBalance = async () => {
+      if (!user?.id) return;
+      try {
+        const data = await api.transactions.getMonthlyBalance();
+        setMonthlyBalance(data);
+      } catch (err) {
+        console.error("Greška pri učitavanju mjesečne uštede", err);
+      }
+    };
+    loadMonthlyBalance();
+  }, [user?.id]);
+
+  // Učitaj sve dostupne kategorije
+  useEffect(() => {
+    const loadAllCategories = async () => {
+      if (!user?.id) return;
+      try {
+        // Dohvati sve transakcije bez filtera da vidimo sve dostupne kategorije
+        const response = await api.transactions.getAll(0, 1000);
+        const uniqueCategories = new Set(
+          response.content.map((t) => t.categoryName),
+        );
+        setAllCategories(Array.from(uniqueCategories).sort());
+      } catch (err) {
+        console.error("Greška pri učitavanju kategorija", err);
+      }
+    };
+    loadAllCategories();
+  }, [user?.id]);
+
+  const addTransaction = useCallback(
+    async (tx) => {
+      try {
+        await api.transactions.create(
+          tx.categoryId,
+          tx.amount,
+          tx.transactionDate,
+          tx.description,
+        );
+        setDisplayPage(0);
+        fetchTransactions();
+
+        // Osvježi mjesečnu uštedu
+        const data = await api.transactions.getMonthlyBalance();
+        setMonthlyBalance(data);
+      } catch (err) {
+        console.error("Greška pri dodavanju transakcije", err);
+      }
+    },
+    [fetchTransactions],
+  );
+
+  const deleteTransaction = useCallback(
+    async (id) => {
+      try {
+        await api.transactions.delete(id);
+        fetchTransactions();
+      } catch (err) {
+        console.error("Greška pri brisanju transakcije", err);
+      }
+    },
+    [fetchTransactions],
+  );
 
   const totals = useMemo(() => {
     let income = 0;
     let expense = 0;
-    for (const t of transactions) {
+    paginatedTransactions.forEach((t) => {
       if (t.type === "income") income += t.amount;
       else expense += t.amount;
-    }
+    });
     return { income, expense, saved: income - expense };
-  }, [transactions]);
+  }, [paginatedTransactions]);
 
   const categories = useMemo(() => {
-    const set = new Set();
-    for (const t of transactions) set.add(t.category);
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [transactions]);
+    return allCategories;
+  }, [allCategories]);
 
-  const filteredTransactions = useMemo(() => {
-    const s = filters.search.trim().toLowerCase();
+  const totalPages = Math.ceil(totalCount / pageSize);
 
-    const filtered = transactions.filter((t) => {
-      // search
-      if (s) {
-        const desc = (t.description || "").toLowerCase();
-        if (!desc.includes(s)) return false;
-      }
+  if (initialLoading) {
+    return (
+      <div className="container">
+        <div className="row" style={{ justifyContent: "space-between" }}>
+          <div>
+            <h2>Transakcije</h2>
+          </div>
+          <div className="card" style={{ padding: 12, minWidth: 260 }}>
+            <div className="muted" style={{ fontSize: 13, marginBottom: 6 }}>
+              Mjesečna ušteda
+            </div>
+            <Skeleton width="100%" height="24px" />
+          </div>
+        </div>
 
-      // category
-      if (filters.category !== ALL && t.category !== filters.category)
-        return false;
+        <div style={{ height: 16 }} />
 
-      // type
-      if (filters.type !== ALL && t.type !== filters.type) return false;
+        <div className="card">
+          <h3>Unos transakcije</h3>
+          <Skeleton width="100%" height="200px" />
+        </div>
 
-      // date range
-      if (filters.from && t.date < filters.from) return false;
-      if (filters.to && t.date > filters.to) return false;
+        <div style={{ height: 16 }} />
 
-      // amount range
-      const min = filters.minAmount === "" ? null : Number(filters.minAmount);
-      const max = filters.maxAmount === "" ? null : Number(filters.maxAmount);
-
-      if (min !== null && Number.isFinite(min) && t.amount < min) return false;
-      if (max !== null && Number.isFinite(max) && t.amount > max) return false;
-
-      return true;
-    });
-
-    // ===== SORTIRANJE =====
-    return filtered.slice().sort((a, b) => {
-      switch (filters.sort) {
-        case "date_asc":
-          return a.date.localeCompare(b.date);
-        case "date_desc":
-          return b.date.localeCompare(a.date);
-        case "amount_asc":
-          return a.amount - b.amount;
-        case "amount_desc":
-          return b.amount - a.amount;
-        default:
-          return 0;
-      }
-    });
-  }, [transactions, filters]);
+        <div className="card">
+          <h3>Popis transakcija</h3>
+          <div style={{ marginTop: 16 }}>
+            <TransactionTableSkeleton />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container">
       <div className="row" style={{ justifyContent: "space-between" }}>
         <div>
           <h2>Transakcije</h2>
-          <p className="muted" style={{ marginTop: 6 }}>
-            Korisnik: <b>{user.name}</b> ({user.email})
-          </p>
-          <p style={{ marginTop: 10 }}>
-            <Link to="/dashboard">← Natrag na nadzornu ploču</Link>
-          </p>
         </div>
 
         <div className="card" style={{ padding: 12, minWidth: 260 }}>
           <div className="muted" style={{ fontSize: 13, marginBottom: 6 }}>
-            Sažetak
+            Mjesečna ušteda
           </div>
           <div style={{ display: "grid", gap: 6 }}>
-            <div>
-              Prihodi: <b>{totals.income.toFixed(2)} €</b>
-            </div>
-            <div>
-              Troškovi: <b>{totals.expense.toFixed(2)} €</b>
-            </div>
-            <div>
-              Ušteda: <b>{totals.saved.toFixed(2)} €</b>
-            </div>
+            {monthlyBalance !== null ? (
+              <div>
+                Ušteda ovog mjeseca:{" "}
+                <b>
+                  {(typeof monthlyBalance === "object"
+                    ? monthlyBalance.balance || monthlyBalance.saved || 0
+                    : monthlyBalance
+                  ).toFixed(2)}{" "}
+                  €
+                </b>
+              </div>
+            ) : (
+              <div className="muted">Učitavanje...</div>
+            )}
           </div>
         </div>
       </div>
@@ -155,13 +264,39 @@ export default function TransactionsPage() {
           categories={categories}
         />
 
-        <div className="muted" style={{ marginTop: 10, fontSize: 13 }}>
-          Prikazano: <b>{filteredTransactions.length}</b> /{" "}
-          {transactions.length}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop: 16,
+            marginBottom: 16,
+          }}
+        >
+          <div className="muted" style={{ fontSize: 13 }}>
+            Stranica: <b>{displayPage + 1}</b> od{" "}
+            <b>{Math.max(1, totalPages)}</b> | Ukupno: <b>{totalCount}</b>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              className="btn-secondary"
+              onClick={() => setDisplayPage(Math.max(0, displayPage - 1))}
+              disabled={displayPage === 0}
+            >
+              ← Prethodna
+            </button>
+            <button
+              className="btn-secondary"
+              onClick={() => setDisplayPage(displayPage + 1)}
+              disabled={displayPage >= totalPages - 1}
+            >
+              Sljedeća →
+            </button>
+          </div>
         </div>
 
         <TransactionTable
-          transactions={filteredTransactions}
+          transactions={paginatedTransactions}
           onDelete={deleteTransaction}
         />
       </div>

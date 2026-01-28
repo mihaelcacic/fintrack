@@ -25,6 +25,9 @@ public class User {
 
     private String username;
 
+    @Column(name = "is_admin", nullable = false)
+    private boolean isAdmin;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 

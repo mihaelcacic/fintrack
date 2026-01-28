@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.*;
 
 @Getter
@@ -12,6 +14,7 @@ import lombok.*;
 @AllArgsConstructor
 @Entity
 @Table(name = "transactions")
+@JsonIgnoreProperties({"user"})
 public class Transaction {
 
     @Id
@@ -20,6 +23,7 @@ public class Transaction {
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "user_id")
+    @JsonIgnore
     private User user;
 
     @ManyToOne

@@ -1,6 +1,8 @@
 package com.havana.backend.model;
 
 import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.*;
 
 @Getter
@@ -8,15 +10,17 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "categories", uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "name"}))
+@Table(name = "categories")
+@JsonIgnoreProperties({"user"})
 public class Category {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "user_id")
+    @ManyToOne(optional = true)
+    @JoinColumn(name = "user_id", nullable = true)
+    @JsonIgnore
     private User user;
 
     @Column(nullable = false)
@@ -25,5 +29,4 @@ public class Category {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private CategoryType type;
-
 }
