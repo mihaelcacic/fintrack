@@ -303,7 +303,7 @@ export default function AnalysisPage() {
         </div>
 
         {/* DNEVNA ANALIZA */}
-        <div className="card">
+        <div className="card" style={{ marginBottom: 24 }}>
           <div
             style={{
               marginBottom: 16,
@@ -333,13 +333,14 @@ export default function AnalysisPage() {
               </select>
             </label>
           </div>
+
           <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 14 }}>
             Rezultati
           </h3>
           {dailyLoading ? (
             <LoadingSpinner />
           ) : dailyData && typeof dailyData === "object" ? (
-            <div style={{ display: "grid", gap: 12 }}>
+            <div style={{ display: "grid", gap: 12, marginBottom: 24 }}>
               {Object.entries(dailyData).map(([key, value]) => {
                 const isBigNumber =
                   key === "average" ||
@@ -389,8 +390,64 @@ export default function AnalysisPage() {
               })}
             </div>
           ) : (
-            <p className="muted">Nema dostupnih podataka</p>
+            <div style={{ marginBottom: 24 }}>
+              <p className="muted">Nema dostupnih podataka</p>
+            </div>
           )}
+
+          <div
+            style={{
+              borderTop: "1px solid rgba(124, 58, 237, 0.2)",
+              paddingTop: 16,
+            }}
+          >
+            <h3 style={{ marginTop: 0, marginBottom: 16, fontSize: 14 }}>
+              📈 Dnevna potrošnja po danima
+            </h3>
+            {dailyLoading ? (
+              <div
+                style={{
+                  height: 300,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <LoadingSpinner />
+              </div>
+            ) : dailyData &&
+              typeof dailyData === "object" &&
+              dailyData.series ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart
+                  data={Object.entries(dailyData.series).map(
+                    ([date, amount]) => ({
+                      date: new Date(date).toLocaleDateString("hr-HR", {
+                        month: "short",
+                        day: "numeric",
+                      }),
+                      amount: Number(amount),
+                    }),
+                  )}
+                >
+                  <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip
+                    formatter={(value) => `${Number(value).toFixed(2)} €`}
+                    contentStyle={{
+                      background: "rgba(30, 30, 50, 0.98)",
+                      border: "1px solid rgba(124, 58, 237, 0.6)",
+                      borderRadius: 8,
+                      padding: "8px 12px",
+                    }}
+                  />
+                  <Bar dataKey="amount" fill="#7c3aed" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="muted">Nema dostupnih podataka</p>
+            )}
+          </div>
         </div>
 
         {/* POKRETNI PROSJEK */}
@@ -589,52 +646,6 @@ export default function AnalysisPage() {
             <p className="muted">Nema dostupnih podataka</p>
           )}
         </div>
-      </div>
-
-      {/* DNEVNI GRAF */}
-      <div className="card" style={{ marginBottom: 24 }}>
-        <h3 style={{ marginTop: 0, marginBottom: 16 }}>
-          📈 Dnevna potrošnja po danima
-        </h3>
-        {dailyLoading ? (
-          <div
-            style={{
-              height: 300,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <LoadingSpinner />
-          </div>
-        ) : dailyData && typeof dailyData === "object" && dailyData.series ? (
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart
-              data={Object.entries(dailyData.series).map(([date, amount]) => ({
-                date: new Date(date).toLocaleDateString("hr-HR", {
-                  month: "short",
-                  day: "numeric",
-                }),
-                amount: Number(amount),
-              }))}
-            >
-              <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip
-                formatter={(value) => `${Number(value).toFixed(2)} €`}
-                contentStyle={{
-                  background: "rgba(30, 30, 50, 0.98)",
-                  border: "1px solid rgba(124, 58, 237, 0.6)",
-                  borderRadius: 8,
-                  padding: "8px 12px",
-                }}
-              />
-              <Bar dataKey="amount" fill="#7c3aed" />
-            </BarChart>
-          </ResponsiveContainer>
-        ) : (
-          <p className="muted">Nema dostupnih podataka</p>
-        )}
       </div>
 
       {/* POMIČNI MJESEČNI NIZ */}
