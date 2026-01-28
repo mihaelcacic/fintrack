@@ -6,5 +6,4 @@ import com.havana.backend.model.User;
 public record CreateCategoryRequest(
         String name,
         CategoryType type
-) {
-}
+) {}

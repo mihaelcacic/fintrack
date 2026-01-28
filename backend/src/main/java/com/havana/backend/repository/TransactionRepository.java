@@ -41,4 +41,5 @@ public interface TransactionRepository extends JpaRepository<Transaction, Intege
             @Param("end") LocalDate end
     );
 
+    List<Transaction> findByUserAndTransactionDateAfter(User user, LocalDate fromDate);
 }
