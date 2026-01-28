@@ -12,63 +12,12 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Dohvati sve transakcije
-        const transactionsData = await api.transactions.getAll();
-        const allTransactions = transactionsData.content || [];
-
-        // Filtriraj samo EXPENSE transakcije za graf
-        const expenseTransactions = allTransactions.filter(
-          (t) => t.categoryType === "EXPENSE",
-        );
-
-        // Izračunaj potrošnju po kategorijama
-        const categoryMap = new Map();
-        expenseTransactions.forEach((t) => {
-          const categoryName = t.categoryName || "Ostalo";
-          const amount = parseFloat(t.amount);
-          categoryMap.set(
-            categoryName,
-            (categoryMap.get(categoryName) || 0) + amount,
-          );
-        });
-
-        // Pretvori u niz za graf
-        const spendingData = Array.from(categoryMap.entries()).map(
-          ([name, value]) => ({
-            name,
-            value: parseFloat(value.toFixed(2)),
-          }),
-        );
+        // Koristi dashboard endpoint koji radi sve na backend-u
+        const spendingData = await api.dashboard.getSpendingByCategory();
         setSpending(spendingData);
 
-        // Izračunaj tjednu potrošnju (samo EXPENSE)
-        const now = new Date();
-        const weekStart = new Date(now);
-        weekStart.setDate(
-          now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1),
-        );
-        weekStart.setHours(0, 0, 0, 0);
-
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 6);
-
-        const weeklyExpenses = expenseTransactions.filter((t) => {
-          const tDate = new Date(t.transactionDate);
-          return tDate >= weekStart && tDate <= weekEnd;
-        });
-
-        const weeklySpent = weeklyExpenses.reduce(
-          (sum, t) => sum + parseFloat(t.amount),
-          0,
-        );
-        const weeklyGoal = 500; // Default cilj
-
-        setWeeklyData({
-          spent: weeklySpent,
-          goal: weeklyGoal,
-          remaining: weeklyGoal - weeklySpent,
-          percentage: (weeklySpent / weeklyGoal) * 100,
-        });
+        const weeklyData = await api.dashboard.getWeeklyGoal();
+        setWeeklyData(weeklyData);
       } catch (err) {
         console.error("Greška pri učitavanju podataka", err);
       } finally {
