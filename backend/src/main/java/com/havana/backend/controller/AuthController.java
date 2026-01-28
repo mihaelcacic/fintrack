@@ -7,12 +7,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -28,7 +31,13 @@ public class AuthController {
         }
 
         Integer userId = (Integer) authentication.getPrincipal();
-        return ResponseEntity.ok(userService.findById(userId));
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "user", userService.findById(userId),
+                        "roles", authentication.getAuthorities()
+                )
+        );
     }
 
     @PostMapping("/register")
@@ -57,11 +66,20 @@ public class AuthController {
     }
 
     private void authenticate(User user, HttpServletRequest request) {
+
+        List<GrantedAuthority> authorities;
+
+        if (user.isAdmin()) {
+            authorities = List.of(new SimpleGrantedAuthority("ROLE_ADMIN"));
+        } else {
+            authorities = List.of(new SimpleGrantedAuthority("ROLE_USER"));
+        }
+
         UsernamePasswordAuthenticationToken auth =
                 new UsernamePasswordAuthenticationToken(
-                        user.getId(),
+                        user.getId(),   // principal (ti koristiš userId)
                         null,
-                        List.of()
+                        authorities
                 );
 
         SecurityContext context = SecurityContextHolder.createEmptyContext();
