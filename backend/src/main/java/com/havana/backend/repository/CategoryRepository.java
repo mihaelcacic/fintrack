@@ -35,4 +35,10 @@ public interface CategoryRepository extends JpaRepository<Category, Integer> {
             User user,
             CategoryType type
     );
+
+    // sve globalne
+    List<Category> findByUserIsNull();
+
+    // sve korisničke
+    List<Category> findByUserIsNotNull();
 }
