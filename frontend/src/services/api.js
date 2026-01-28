@@ -93,6 +93,15 @@ export const categories = {
     if (!res.ok) throw new Error("Failed to delete category");
     return res.ok;
   },
+
+  getMyCategories: async () => {
+    const res = await fetch(`${API_BASE}/categories/my`, {
+      method: "GET",
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to fetch user categories");
+    return parseJSON(res);
+  },
 };
 
 // =====================
@@ -166,6 +175,15 @@ export const transactions = {
       credentials: "include",
     });
     if (!res.ok) throw new Error("Failed to import transactions");
+    return parseJSON(res);
+  },
+
+  getMonthlyBalance: async () => {
+    const res = await fetch(`${API_BASE}/transactions/monthly-balance`, {
+      method: "GET",
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to fetch monthly balance");
     return parseJSON(res);
   },
 };

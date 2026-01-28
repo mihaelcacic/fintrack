@@ -6,6 +6,7 @@ export default function TransactionForm({ onAdd, onCategoriesChange }) {
   const [amount, setAmount] = useState("");
   const [categoryId, setCategoryId] = useState(null);
   const [categories, setCategories] = useState([]);
+  const [customCategories, setCustomCategories] = useState([]);
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [description, setDescription] = useState("");
   const [err, setErr] = useState("");
@@ -123,7 +124,18 @@ export default function TransactionForm({ onAdd, onCategoriesChange }) {
     }
   };
 
-  const submit = async (e) => {
+  const handleShowDeleteModal = async () => {
+    setShowDeleteCategory(true);
+    try {
+      const data = await api.categories.getMyCategories();
+      setCustomCategories(data);
+    } catch (error) {
+      console.error("Greška pri učitavanju korisničkih kategorija", error);
+      setDeleteError("Greška pri učitavanju kategorija");
+    }
+  };
+
+  const submit = (e) => {
     e.preventDefault();
     setErr("");
 
@@ -348,7 +360,7 @@ export default function TransactionForm({ onAdd, onCategoriesChange }) {
             />
 
             <div style={{ flex: 1, overflowY: "auto", marginBottom: 16 }}>
-              {categories
+              {customCategories
                 .filter(
                   (cat) =>
                     deleteFilterType === null || cat.type === deleteFilterType,
@@ -393,7 +405,7 @@ export default function TransactionForm({ onAdd, onCategoriesChange }) {
                     </button>
                   </div>
                 ))}
-              {categories
+              {customCategories
                 .filter(
                   (cat) =>
                     deleteFilterType === null || cat.type === deleteFilterType,
@@ -482,7 +494,7 @@ export default function TransactionForm({ onAdd, onCategoriesChange }) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowDeleteCategory(true)}
+                  onClick={handleShowDeleteModal}
                   className="btn-secondary"
                   style={{ flex: 1 }}
                 >

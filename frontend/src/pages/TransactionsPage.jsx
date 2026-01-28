@@ -6,6 +6,8 @@ import TransactionTable from "../features/transactions/TransactionTable";
 import TransactionFilters, {
   ALL,
 } from "../features/transactions/TransactionFilters";
+import TransactionTableSkeleton from "../components/TransactionTableSkeleton";
+import Skeleton from "../components/Skeleton";
 import * as api from "../services/api";
 
 export default function TransactionsPage() {
@@ -15,6 +17,8 @@ export default function TransactionsPage() {
   const [displayPage, setDisplayPage] = useState(0);
   const [pageSize] = useState(10);
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [monthlyBalance, setMonthlyBalance] = useState(null);
   const [filters, setFilters] = useState({
     search: "",
     category: ALL,
@@ -29,6 +33,7 @@ export default function TransactionsPage() {
   const fetchTransactions = useCallback(async () => {
     if (!user?.id) {
       setLoading(false);
+      if (initialLoading) setInitialLoading(false);
       return;
     }
     try {
@@ -67,13 +72,30 @@ export default function TransactionsPage() {
       console.error("Greška pri učitavanju transakcija", err);
     } finally {
       setLoading(false);
+      if (initialLoading) setInitialLoading(false);
     }
   }, [user?.id, displayPage, pageSize, filters]);
 
   useEffect(() => {
-    setLoading(true);
-    fetchTransactions();
+    // Debounce za search - bez postavljanja loading na true
+    const timer = setTimeout(() => {
+      fetchTransactions();
+    }, 500);
+    return () => clearTimeout(timer);
   }, [fetchTransactions]);
+
+  useEffect(() => {
+    const loadMonthlyBalance = async () => {
+      if (!user?.id) return;
+      try {
+        const data = await api.transactions.getMonthlyBalance();
+        setMonthlyBalance(data);
+      } catch (err) {
+        console.error("Greška pri učitavanju mjesečne uštede", err);
+      }
+    };
+    loadMonthlyBalance();
+  }, [user?.id]);
 
   const addTransaction = useCallback(
     async (tx) => {
@@ -84,6 +106,7 @@ export default function TransactionsPage() {
           tx.transactionDate,
           tx.description,
         );
+        setDisplayPage(0);
         fetchTransactions();
       } catch (err) {
         console.error("Greška pri dodavanju transakcije", err);
@@ -96,6 +119,7 @@ export default function TransactionsPage() {
     async (id) => {
       try {
         await api.transactions.delete(id);
+        setDisplayPage(0);
         fetchTransactions();
       } catch (err) {
         console.error("Greška pri brisanju transakcije", err);
@@ -121,7 +145,39 @@ export default function TransactionsPage() {
 
   const totalPages = Math.ceil(totalCount / pageSize);
 
-  if (loading) return <div className="container">Učitavanje...</div>;
+  if (initialLoading) {
+    return (
+      <div className="container">
+        <div className="row" style={{ justifyContent: "space-between" }}>
+          <div>
+            <h2>Transakcije</h2>
+          </div>
+          <div className="card" style={{ padding: 12, minWidth: 260 }}>
+            <div className="muted" style={{ fontSize: 13, marginBottom: 6 }}>
+              Mjesečna ušteda
+            </div>
+            <Skeleton width="100%" height="24px" />
+          </div>
+        </div>
+
+        <div style={{ height: 16 }} />
+
+        <div className="card">
+          <h3>Unos transakcije</h3>
+          <Skeleton width="100%" height="200px" />
+        </div>
+
+        <div style={{ height: 16 }} />
+
+        <div className="card">
+          <h3>Popis transakcija</h3>
+          <div style={{ marginTop: 16 }}>
+            <TransactionTableSkeleton />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container">
@@ -132,18 +188,23 @@ export default function TransactionsPage() {
 
         <div className="card" style={{ padding: 12, minWidth: 260 }}>
           <div className="muted" style={{ fontSize: 13, marginBottom: 6 }}>
-            Sažetak
+            Mjesečna ušteda
           </div>
           <div style={{ display: "grid", gap: 6 }}>
-            <div>
-              Prihodi: <b>{totals.income.toFixed(2)} €</b>
-            </div>
-            <div>
-              Troškovi: <b>{totals.expense.toFixed(2)} €</b>
-            </div>
-            <div>
-              Ušteda: <b>{totals.saved.toFixed(2)} €</b>
-            </div>
+            {monthlyBalance !== null ? (
+              <div>
+                Ušteda ovog mjeseca:{" "}
+                <b>
+                  {(typeof monthlyBalance === "object"
+                    ? monthlyBalance.balance || monthlyBalance.saved || 0
+                    : monthlyBalance
+                  ).toFixed(2)}{" "}
+                  €
+                </b>
+              </div>
+            ) : (
+              <div className="muted">Učitavanje...</div>
+            )}
           </div>
         </div>
       </div>
