@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
-import { PieChart, Pie, Tooltip, ResponsiveContainer } from "recharts";
+import { PieChart, Pie, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import * as api from "../services/api";
 
 export default function DashboardPage() {
@@ -77,23 +77,23 @@ export default function DashboardPage() {
             borderRadius: 14,
             border: "1px solid var(--border)",
             backdropFilter: "blur(10px)",
+            overflow: "hidden",
           }}
         >
           <h3>Potrošnja po kategorijama</h3>
           {spending.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={600}>
               <PieChart>
                 <Pie
                   data={spendingWithColors}
                   cx="50%"
-                  cy="50%"
+                  cy="45%"
                   labelLine={false}
-                  label={({ name, value }) => `${name}: ${value.toFixed(2)} €`}
-                  outerRadius={80}
+                  outerRadius={100}
                   dataKey="value"
                 />
                 <Tooltip
-                  formatter={(value) => [`${value.toFixed(2)} €`, "Iznos"]}
+                  labelFormatter={() => ""}
                   contentStyle={{
                     background: "rgba(30, 30, 50, 0.98)",
                     border: "2px solid rgba(124, 58, 237, 0.6)",
@@ -101,6 +101,10 @@ export default function DashboardPage() {
                     padding: "10px 12px",
                     boxShadow: "0 4px 20px rgba(0, 0, 0, 0.4)",
                   }}
+                  formatter={(value, name, props) => [
+                    `${props.payload.name}: ${value.toFixed(2)} €`,
+                    "",
+                  ]}
                   labelStyle={{
                     color: "rgba(255, 255, 255, 0.95)",
                     fontSize: "14px",
@@ -109,6 +113,26 @@ export default function DashboardPage() {
                   itemStyle={{
                     color: "rgba(255, 255, 255, 0.85)",
                     fontSize: "13px",
+                  }}
+                />
+                <Legend
+                  layout="horizontal"
+                  verticalAlign="bottom"
+                  height={200}
+                  width={600}
+                  formatter={(value, entry) =>
+                    `${entry.payload.name}: ${entry.payload.value.toFixed(2)} €`
+                  }
+                  wrapperStyle={{
+                    paddingTop: 0,
+                    maxHeight: "280px",
+                    overflowY: "auto",
+                    paddingRight: 8,
+                    fontSize: "14px",
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "16px",
+                    width: "100%",
                   }}
                 />
               </PieChart>
