@@ -75,4 +75,21 @@ public class CategoryService {
 
         categoryRepository.delete(category);
     }
+
+    public Category createGlobalCategory(CreateCategoryRequest request) {
+
+        Category category = new Category();
+        category.setName(request.name());
+        category.setType(request.type());
+        category.setUser(null);
+
+        return categoryRepository.save(category);
+    }
+
+    public void deleteCategory(Integer categoryId) {
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Category not found"));
+
+        categoryRepository.delete(category);
+    }
 }

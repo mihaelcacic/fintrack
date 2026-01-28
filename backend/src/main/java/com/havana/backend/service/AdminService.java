@@ -135,6 +135,8 @@ public class AdminService {
         return userRepository.save(user);
     }
 
+
+
     private RegularUserResponse toResponse(User user) {
         BigDecimal income = transactionRepository.sumIncome(user.getId());
         BigDecimal expense = transactionRepository.sumExpense(user.getId());

@@ -2,9 +2,12 @@ package com.havana.backend.controller;
 
 import com.havana.backend.data.AdminCreateUserRequest;
 import com.havana.backend.data.AdminUpdateUserRequest;
+import com.havana.backend.data.CreateCategoryRequest;
 import com.havana.backend.data.RegularUserResponse;
+import com.havana.backend.model.Category;
 import com.havana.backend.model.User;
 import com.havana.backend.service.AdminService;
+import com.havana.backend.service.CategoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +20,7 @@ import java.util.List;
 public class AdminController {
 
     private final AdminService adminService;
+    private final CategoryService categoryService;
 
     // dodavanje
     @GetMapping("/users/admins")
@@ -66,5 +70,22 @@ public class AdminController {
     ) {
         User updatedUser = adminService.updateUserByAdmin(userId, request);
         return ResponseEntity.ok(updatedUser);
+    }
+
+    @PostMapping("/categories")
+    public ResponseEntity<Category> createGlobalCategory(
+            @RequestBody CreateCategoryRequest request
+    ) {
+        return ResponseEntity.ok(
+                categoryService.createGlobalCategory(request)
+        );
+    }
+
+    @DeleteMapping("/categories/{categoryId}")
+    public ResponseEntity<?> deleteCategory(
+            @PathVariable Integer categoryId
+    ) {
+        categoryService.deleteCategory(categoryId);
+        return ResponseEntity.noContent().build();
     }
 }
