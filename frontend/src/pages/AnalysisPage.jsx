@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import {
+  LineChart,
+  Line,
   BarChart,
   Bar,
   XAxis,
@@ -648,68 +650,56 @@ export default function AnalysisPage() {
         </div>
       </div>
 
-      {/* POMIČNI MJESEČNI NIZ */}
-      <div className="card" style={{ marginBottom: 24 }}>
-        <h3 style={{ marginTop: 0, marginBottom: 16 }}>
-          📊 Pomični mjesečni niz
-        </h3>
-        {rollingLoading ? (
-          <LoadingSpinner />
-        ) : Object.keys(rollingSeries).length > 0 ? (
-          <div style={{ display: "grid", gap: 8 }}>
-            {Object.entries(rollingSeries).map(([period, value]) => (
-              <div
-                key={period}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: 12,
-                  background: "rgba(255, 255, 255, 0.04)",
-                  borderRadius: 4,
-                }}
-              >
-                <span className="muted">{period}</span>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div
-                    style={{
-                      width: 120,
-                      height: 24,
-                      background: "rgba(124, 58, 237, 0.2)",
-                      borderRadius: 4,
-                      overflow: "hidden",
-                      position: "relative",
-                    }}
-                  >
-                    <div
-                      style={{
-                        height: "100%",
-                        width: `${Math.min(100, (Number(value) / 3000) * 100)}%`,
-                        background: "linear-gradient(90deg, #7c3aed, #6d28d9)",
-                        transition: "width 0.3s ease",
-                      }}
-                    />
-                  </div>
-                  <span
-                    style={{
-                      fontWeight: 600,
-                      minWidth: 70,
-                      textAlign: "right",
-                      fontSize: 13,
-                    }}
-                  >
-                    {Number(value).toFixed(2)} €
-                  </span>
+        {/* POMIČNI MJESEČNI NIZ */}
+        <div className="card" style={{ marginBottom: 24 }}>
+            <h3 style={{ marginTop: 0, marginBottom: 16 }}>
+                📊 Pomični mjesečni niz
+            </h3>
+            {rollingLoading ? (
+                <LoadingSpinner />
+            ) : Object.keys(rollingSeries).length > 0 ? (
+                <div style={{ width: "100%", height: 300 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart
+                            data={Object.entries(rollingSeries).map(([month, value]) => ({
+                                month,
+                                value: Number(value),
+                            }))}
+                            margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
+                        >
+                            <XAxis
+                                dataKey="month"
+                                tick={{ fontSize: 12 }}
+                                angle={-30}
+                                textAnchor="end"
+                            />
+                            <YAxis tick={{ fontSize: 12 }} />
+                            <Tooltip
+                                formatter={(val) => `${Number(val).toFixed(2)} €`}
+                                contentStyle={{
+                                    background: "rgba(30, 30, 50, 0.98)",
+                                    border: "1px solid rgba(124, 58, 237, 0.6)",
+                                    borderRadius: 8,
+                                    padding: "8px 12px",
+                                }}
+                            />
+                            <Line
+                                type="monotone"
+                                dataKey="value"
+                                stroke="#7c3aed"
+                                strokeWidth={2}
+                                dot={{ r: 4 }}
+                                activeDot={{ r: 6 }}
+                            />
+                        </LineChart>
+                    </ResponsiveContainer>
                 </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="muted">Nema dostupnih podataka</p>
-        )}
-      </div>
+            ) : (
+                <p className="muted">Nema dostupnih podataka</p>
+            )}
+        </div>
 
-      <div
+        <div
         style={{
           marginTop: 32,
           padding: 16,
