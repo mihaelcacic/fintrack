@@ -4,7 +4,7 @@ CREATE TABLE users (
                        password_hash TEXT NOT NULL,
                        username VARCHAR(100),
                        created_at TIMESTAMP DEFAULT NOW(),
-                        isAdmin BOOLEAN DEFAULT false
+                       is_Admin BOOLEAN DEFAULT false
 );
 
 CREATE TABLE categories (
