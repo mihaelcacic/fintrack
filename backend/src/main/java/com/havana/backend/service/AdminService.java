@@ -1,10 +1,9 @@
 package com.havana.backend.service;
 
-import com.havana.backend.data.AdminCreateUserRequest;
-import com.havana.backend.data.AdminUpdateUserRequest;
-import com.havana.backend.data.AdminUserResponse;
-import com.havana.backend.data.RegularUserResponse;
+import com.havana.backend.data.*;
+import com.havana.backend.model.Category;
 import com.havana.backend.model.User;
+import com.havana.backend.repository.CategoryRepository;
 import com.havana.backend.repository.TransactionRepository;
 import com.havana.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -12,7 +11,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +23,7 @@ public class AdminService {
     private final UserRepository userRepository;
     private final TransactionRepository transactionRepository;
     private final PasswordEncoder passwordEncoder;
+    private final CategoryRepository categoryRepository;
 
     // dohvat svih korisnika
     public List<AdminUserResponse> getAdmins() {
@@ -135,7 +138,45 @@ public class AdminService {
         return userRepository.save(user);
     }
 
+    public List<AdminCategoryResponse> getAllCategoriesForAdmin() {
 
+        // 1. Globalne kategorije (bez duplikata)
+        List<Category> globalCategories =
+                categoryRepository.findByUserIsNull();
+
+        Map<String, Category> uniqueGlobals = new HashMap<>();
+
+        for (Category c : globalCategories) {
+            String key = c.getName().toLowerCase() + "|" + c.getType();
+            uniqueGlobals.putIfAbsent(key, c);
+        }
+
+        // 2. Sve korisničke kategorije (nema filtriranja)
+        List<Category> userCategories =
+                categoryRepository.findByUserIsNotNull();
+
+        // 3. Spajanje
+        List<AdminCategoryResponse> result = new ArrayList<>();
+
+        uniqueGlobals.values().forEach(c ->
+                result.add(toAdminResponse(c))
+        );
+
+        userCategories.forEach(c ->
+                result.add(toAdminResponse(c))
+        );
+
+        return result;
+    }
+
+    private AdminCategoryResponse toAdminResponse(Category c) {
+        return new AdminCategoryResponse(
+                c.getId(),
+                c.getName(),
+                c.getType().name(),
+                c.getUser() == null ? null : c.getUser().getId()
+        );
+    }
 
     private RegularUserResponse toResponse(User user) {
         BigDecimal income = transactionRepository.sumIncome(user.getId());

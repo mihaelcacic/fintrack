@@ -88,4 +88,11 @@ public class AdminController {
         categoryService.deleteCategory(categoryId);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/show-categories")
+    public ResponseEntity<?> getAllCategories() {
+        return ResponseEntity.ok(
+                adminService.getAllCategoriesForAdmin()
+        );
+    }
 }
