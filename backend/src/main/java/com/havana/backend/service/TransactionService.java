@@ -238,14 +238,17 @@ public class TransactionService {
 
         Category category =
                 categoryRepository
-                        .findByNameAndUserAndType(
-                                categoryName, user, categoryType
-                        )
+
+                        .findByNameAndTypeAndUserIsNull(categoryName, categoryType)
+
+                        .or(() -> categoryRepository
+                                .findByNameAndUserAndType(categoryName, user, categoryType))
+
                         .orElseGet(() -> {
                             Category c = new Category();
                             c.setName(categoryName);
                             c.setType(categoryType);
-                            c.setUser(user);
+                            c.setUser(user); // user-specific
                             return categoryRepository.save(c);
                         });
 
